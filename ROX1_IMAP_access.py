@@ -16,7 +16,7 @@ class cls_CAD_emails():
         ### initial test for SSL to server comes back with error for TLS
         mailbox_context = ssl.create_default_context()
         self.CADEmails = imaplib.IMAP4_SSL(host=self.wrk_host, port=993)
-        #self.CADEmails.starttls(ssl_context=mailbox_context)   # error message that TLS is not supported
+        #self.CADEmails.starttls(ssl_context=mailbox_context)   # error message that TLS is not supported (??)
 
         self.CADEmails.login(self.wrk_login, self.wrk_pwd)
         self.overall_firecount = 0
