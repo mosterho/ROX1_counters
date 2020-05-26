@@ -1,12 +1,12 @@
 ###
-## open the "dispatches" mailbox,
-## Update table with incident#, date, times, etc.
+## open the "dispatches" mailbox, accumulate, print and count
+## the fire and EMS incident numbers and their respective totals
 ##
 
 import sys, ROX1_IMAP_access
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, time
 from operator import itemgetter
-
+from pymongo import MongoClient
 
 class cls_container():
     def __init__(self, arg_mailbox_class):
@@ -14,13 +14,12 @@ class cls_container():
         self.overall_firecount = 0
         self.overall_emscount = 0
         self.incident_list = []
-        self.dct_month = {1:'JAN', 2:'FEB', 3:'MAR', 4:'APR', 5:'MAY', 6:'JUN', 7:'JUL', 8:'AUG', 9:'SEP', 10:'OCT', 11:'NOV', 12:'DEC'}
 
     def fct_read_email(self, arg_mailbox_class, arg_mailboxfolder):
         arg_mailbox_class.CADEmails.select(mailbox=arg_mailboxfolder, readonly=True)
         wrk_search_date = self.fct_date_string()
-        wrk_search_string = 'SINCE ' + wrk_search_date + ' OR BODY "36109"  BODY "36110"'
-        #typ, data = arg_mailbox_class.CADEmails.search(None, 'SINCE 1-MAY-2020 OR BODY "36109"  BODY "36110"')
+        wrk_search_string = '(BODY "3691") SINCE ' + wrk_search_date
+        #typ, data = arg_mailbox_class.CADEmails.search(None, '(BODY "3691") (SINCE 1-JAN-2020)')
         typ, data = arg_mailbox_class.CADEmails.search(None, wrk_search_string)
         for num in data[0].split():
             typ2, data2 = arg_mailbox_class.CADEmails.fetch(num, "(BODY.PEEK[TEXT])")
@@ -45,19 +44,15 @@ class cls_container():
                     inc_date = x_split[0]
                     inc_time = x_split[1]
                     tmp_special = x.split(maxsplit=4)  # special split to get full incident description
-                    try:
-                        inc_description = tmp_special[4]
-                    except:
-                        inc_description = "*** Unexpected data/format of description"
-                    self.incident_list.append((this_incident_nbr, inc_date, inc_time, inc_description))
+                    inc_description = tmp_special[4]
+                    self.incident_list.append((this_incident_nbr, inc_date, inc_time, inc_description[:44].rstrip()))
                     break
         arg_mailbox_class.CADEmails.close()
 
     def fct_date_string(self):
         ## Subtract days and return email search date (e.g., 16-MAY-2020)
-        wrk_date_delta = date.today() - timedelta(days=5)
-        wrk_month_alpha =  self.dct_month[wrk_date_delta.month]
-        wrk_build_string = str(wrk_date_delta.day) + '-' + wrk_month_alpha + '-' + str(wrk_date_delta.year)
+        wrk_date_delta = date.today()
+        wrk_build_string = '01-JAN-' + str(wrk_date_delta.year)
         #print(wrk_date_delta, '  ', wrk_build_string)
         return wrk_build_string
 
@@ -72,6 +67,22 @@ class cls_container():
                 self.overall_emscount += 1
                 rtn_flag = 'E'
         return rtn_flag
+
+    def fct_update_collection(self):
+        client = MongoClient('Ubuntu18Server01')
+        db = client.ROX1fd
+        collection_counter = db.FD_Counter
+        collection_counter.delete_many({})
+
+        for x in self.incident_list:
+            cursor = collection_counter.find({"incident_nbr": x[0]})
+            if(cursor):
+                for cursor_data in cursor:
+                    if(cursor_data):
+                        pass
+            #else:
+            wrk_datetime = datetime.strptime(x[1] + " " + x[2], "%m/%d/%y %H:%M:%S")
+            collection_counter.insert_one({"incident_nbr": x[0], "incident_date":wrk_datetime, "incident_description":x[3]})
 
     def fct_sortandprint(self):
         print_ctr = 0
@@ -102,6 +113,9 @@ if (__name__ == "__main__"):
 
     # Read a nd process the emails in the INBOX
     wrk_container.fct_read_email(wrk_class, 'INBOX')
+
+    # Read list just created and load into MongoDB collection
+    wrk_container.fct_update_collection()
 
     # Sort and print the detailed results from reading the inbox
     wrk_container.fct_sortandprint()

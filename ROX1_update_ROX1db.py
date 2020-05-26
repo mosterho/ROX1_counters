@@ -7,8 +7,8 @@
 ##
 
 
-import sys, email, ROX1_IMAP_access
-from datetime import datetime, date, time
+import sys, email, ROX1_IMAP_access, numpy
+from datetime import datetime, date, time, tzinfo
 from pymongo import MongoClient
 
 class cls_container():
@@ -20,30 +20,22 @@ class cls_container():
         self.overall_emailcount2 = 0
         self.overall_emailcount3 = 0
         self.incident_list = []
-        self.helpcounter = 0  ## Very temporary for debugging
 
     def fct_read_email(self, arg_mailbox_class, arg_mailboxfolder):
         wrk_nbr_emails_ = arg_mailbox_class.CADEmails.select(mailbox=arg_mailboxfolder, readonly=True)
         wrk_parserclass = email.parser.BytesParser()
-        ## Build the search string based on station, apparatus (EMS)
-
-        #wrk_search_string = self.fct_search_string('BODY "3691"')
+        ## See function "fct_search_string" for additional built-in text with date
         wrk_search_string = self.fct_search_string('FROM Dispatch')
         typ, data = arg_mailbox_class.CADEmails.search(None, wrk_search_string)
-
-        #### KEEP THE FOLLOWING 2 LINES (for now)!!
-        #wrk_search_string = self.fct_search_string('OR BODY "36109" BODY "36110" NOT BODY "3691"')
-        #typ, data = arg_mailbox_class.CADEmails.search(None, 'SINCE 1-JAN-2020')
-
-        typ, data = arg_mailbox_class.CADEmails.search(None, wrk_search_string)
+        #### num contains the email ID to retrieve
         for num in data[0].split():
-            typ2, data2 = arg_mailbox_class.CADEmails.fetch(num, "RFC822")
+            typ2, data2 = arg_mailbox_class.CADEmails.fetch(num, "RFC822")  # retrieve list of meial numbers
             self.overall_emailcount += 1
-            #print(typ2, ' ', data2)
             for data2_i in data2:
-                ## Checking for tuple will skip the b')' entry
+                ## Checking for tuple will skip the b')' entry at the end of each email
                 if(isinstance(data2_i, tuple)):
                     wrk_message = wrk_parserclass.parsebytes(data2_i[1])
+                    # work our way thru the email to the "text/html:" content
                     for part in wrk_message.walk():
                         content_type = part.get_content_type()
                         if content_type == "text/html":
@@ -52,22 +44,18 @@ class cls_container():
                                 # get the email body
                                 body = part.get_payload(decode=True).decode()
                             except:
-                                #print('********** Get_payload didn"t work for ', wrk_message)
-                                pass
+                                print('********** ERROR: Get_payload didn"t work for ', data2_i)
+                                break
                             try:
-                                #print(body)
                                 self.fct_email_parse(body)
                                 self.overall_emailcount3 += 1
                             except:
-                                pass
-                                #print('********** my code for email parse didn"t work for ', wrk_message)
+                                print('********** ERROR: This program''s code did not parse email correctly for ', data2_i)
+                                break
 
-        arg_mailbox_class.CADEmails.close()
 
     def fct_email_parse(self, arg_email):
         try:
-            #decoded_bodytext = data2[0][1].decode()
-            #decoded_bodytext = arg_email
             split_bodytext = arg_email.splitlines()
         except:
             split_bodytext = ''
@@ -82,16 +70,17 @@ class cls_container():
         inc_fire = False
         inc_ems = False
         apparatus_list = []
-        
+
         for x in split_bodytext:
             x_split = x.split()
             #print(x)
             if(x[:13] == 'Event Number:' and tmp_incident_flag == False):  #F201140011
                 this_incident_nbr = x[14:24]
                 tmp_return = self.fct_event_number(this_incident_nbr)
+                if(tmp_return == ''):
+                    break
                 tmp_incident_flag = True
-                #if(tmp_return == ''):
-                    #break
+
             if(x[:45] == 'Start Dt     Time       Situation/Description'):  ## Set flag to read next line, this contains the desired date_tuple
                 tmp_startdate_flag = True
             elif(tmp_startdate_flag and x[2:3] == '/' and x[5:6] == '/'): # 04/24/20 16:23:37  FND: 252   SMELL/ODOR/SOUND OF GAS LEAK INSIDE BUILD
@@ -114,23 +103,23 @@ class cls_container():
                 inc_location = x
             if(x[:] == "Unit       Dispatch  Enroute  Arrived   Okay   Area Chk   Avail   Cleared" and tmp_flag_apparatus_header == False):
                 tmp_flag_apparatus_header = True
-            elif((x[:6] == 'E36109' or x[:6] == 'E36110') and x[20:22].isnumeric()  and x[29:31].isnumeric and inc_ems == False):  # x[29:37] is "arrived" time
+            elif((x[:6] == 'E36109' or x[:6] == 'E36110') and x[20:22].isnumeric() and inc_ems == False):  # x[20:22] is "enroute" time
                 inc_ems = True
-                print(this_incident_nbr, '  ', x)
+                #print(this_incident_nbr, '  ', x)
+            #elif(1==1):
                 break
 
-        ## Append the incident list, this will be used to update the Mongo database
-        self.helpcounter += 1
+        ## Append the incident list, this will be used to update the Mongo databas
         if(this_incident_nbr[0] == 'E' and '3691' in arg_email or this_incident_nbr[0] == 'F'):
             inc_fire = True
         #if(this_incident_nbr[0] == 'F' and ('E36109' in arg_email or 'E36110' in arg_email)):
             #inc_ems = True
-        self.incident_list.append((this_incident_nbr, inc_date, inc_time, inc_description[:43].rstrip(), inc_location[:63].rstrip(), inc_fire, inc_ems))
+        self.incident_list.append([this_incident_nbr, inc_date, inc_time, inc_description[:43].rstrip(), inc_location[:63].rstrip(), inc_fire, inc_ems])
 
     def fct_search_string(self, arg_base_text):
-        ## return email search date (e.g., 16-MAY-2020)
+        ## return email search date (e.g., 01-JAN-2020) and additional text
         wrk_date_delta = date.today()
-        wrk_build_string = 'SENTSINCE 01-JAN-' + str(wrk_date_delta.year)
+        wrk_build_string = 'SINCE 01-JAN-' + str(wrk_date_delta.year)
         #wrk_build_string += ' OR (BODY "3691") (OR BODY "36109" BODY "36110")'
         wrk_build_string += ' ' + arg_base_text
         return wrk_build_string
@@ -138,13 +127,16 @@ class cls_container():
     def fct_event_number(self, arg_incident_nbr):
         tmp_incident_nbr = arg_incident_nbr
         rtn_flag = ''
-        if(tmp_incident_nbr not in self.incident_list):
+        tmp_list = [x[0] for x in self.incident_list]  ## Create a temporary list of existing incident numbers to lookup
+        if(tmp_incident_nbr not in tmp_list):
             if(tmp_incident_nbr[:1] == 'F'):
                 self.overall_firecount += 1
                 rtn_flag = 'F'
             if(tmp_incident_nbr[:1] == 'E'):
                 self.overall_emscount += 1
                 rtn_flag = 'E'
+        else:
+            print('******* DUPLICATE INCIDENT: ', tmp_incident_nbr)
         return rtn_flag
 
     def fct_update_collection(self):
@@ -155,12 +147,12 @@ class cls_container():
 
         for x in self.incident_list:
             print(x)
-            #else:
             try:
                 wrk_datetime = datetime.strptime(x[1] + " " + x[2], "%m/%d/%y %H:%M:%S")
             except:
                 pass
-            collection_counter.insert_one({"incident_nbr": x[0], "incident_date":wrk_datetime, "incident_description":x[3], "incident_location":x[4], "fire_counter":x[5], "EMS_counter":x[6]})
+            #
+            collection_counter.insert_one({"incident_nbr": x[0], "incident_date":(wrk_datetime), "incident_description":x[3], "incident_location":x[4], "fire_counter":x[5], "EMS_counter":x[6]})
 
     def fct_sortandprint(self):
         print_ctr = 0
