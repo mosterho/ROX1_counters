@@ -7,19 +7,21 @@
 ##
 
 
-import sys, email, ROX1_IMAP_access, numpy
+import sys, email, ROX1_IMAP_access, pytz
 from datetime import datetime, date, time, tzinfo
 from pymongo import MongoClient
 
-class cls_container():
+class cls_container:
     def __init__(self, arg_mailbox_class):
         self.mailbox_class = arg_mailbox_class
         self.overall_firecount = 0
         self.overall_emscount = 0
+        self.overall_duplicatecount = 0
         self.overall_emailcount = 0
         self.overall_emailcount2 = 0
         self.overall_emailcount3 = 0
         self.incident_list = []
+        self.time_zone_info = pytz.timezone('America/New_York')
 
     def fct_read_email(self, arg_mailbox_class, arg_mailboxfolder):
         wrk_nbr_emails_ = arg_mailbox_class.CADEmails.select(mailbox=arg_mailboxfolder, readonly=True)
@@ -40,19 +42,37 @@ class cls_container():
                         content_type = part.get_content_type()
                         if content_type == "text/html":
                             self.overall_emailcount2 += 1
-                            try:
+                            #try:
                                 # get the email body
-                                body = part.get_payload(decode=True).decode()
-                            except:
-                                print('********** ERROR: Get_payload didn"t work for ', data2_i)
-                                break
                             try:
-                                self.fct_email_parse(body)
-                                self.overall_emailcount3 += 1
-                            except:
-                                print('********** ERROR: This program''s code did not parse email correctly for ', data2_i)
-                                break
+                                body = part.get_payload(decode=True).decode()
+                                #pass
+                            except Exception as e:
+                                print('********** ERROR: Get_payload didn"t work for 1st attempt using "decode"', e)
+                                #print('********** ERROR: Get_payload didn''t work')
+                                try:
+                                    body = part.get_payload()
+                                    #pass
+                                except Exception as e:
+                                    print('********** ERROR: Get_payload didn"t work for 2nd attempt using straight string', e)
+                                    #print('********** ERROR: Get_payload didn''t work')
+                                    break
+                            self.fct_email_parse(body)
+                            self.overall_emailcount3 += 1
+                            #try:
+                                #self.fct_email_parse(body)
+                                #self.overall_emailcount3 += 1
+                            #except Exception as e:
+                                #print('********** ERROR: This program''s code did not parse email correctly for ', e)
+                                #break
 
+    def fct_search_string(self, arg_base_text):
+        ## return email search date (e.g., 01-JAN-2020) and additional text
+        wrk_date_today = date.today()
+        wrk_build_string = 'SINCE 01-JAN-' + str(wrk_date_today.year)
+        #wrk_build_string += ' OR (BODY "3691") (OR BODY "36109" BODY "36110")'
+        wrk_build_string += ' ' + arg_base_text
+        return wrk_build_string
 
     def fct_email_parse(self, arg_email):
         try:
@@ -60,7 +80,7 @@ class cls_container():
         except:
             split_bodytext = ''
         ## go through individual lines of email body, find incident number, etc.
-        tmp_startdate_flag, tmp_startdate_flag2, tmp_flag_location1, tmp_flag_location2 = False, False, 0, False
+        tmp_startdate_flag, tmp_startdate_found_flag, tmp_startdate_flag2, tmp_flag_location1, tmp_flag_location2 = False, False, False, 0, False
         tmp_incident_flag, tmp_flag_apparatus_header = False, False
         this_incident_nbr = ''
         inc_date = ''
@@ -80,10 +100,11 @@ class cls_container():
                 if(tmp_return == ''):
                     break
                 tmp_incident_flag = True
+                print('debugging inc#:', this_incident_nbr)
 
             if(x[:45] == 'Start Dt     Time       Situation/Description'):  ## Set flag to read next line, this contains the desired date_tuple
                 tmp_startdate_flag = True
-            elif(tmp_startdate_flag and x[2:3] == '/' and x[5:6] == '/'): # 04/24/20 16:23:37  FND: 252   SMELL/ODOR/SOUND OF GAS LEAK INSIDE BUILD
+            elif(tmp_startdate_flag and x[2:3] == '/' and x[5:6] == '/' and not tmp_startdate_found_flag): # 04/24/20 16:23:37  FND: 252   SMELL/ODOR/SOUND OF GAS LEAK INSIDE BUILD
                 #tmp_startdate_flag2 = True
                 inc_date = x_split[0]
                 inc_time = x_split[1]
@@ -95,6 +116,7 @@ class cls_container():
                         #inc_description = "*** Unexpected data/format of description"
                 except:
                     inc_description = "*** Unexpected data/format of description"
+                tmp_startdate_found_flag = True
             #elif(inc_description == '' and inc_date != ''):   # once in a while, the description is on the line after date/time (e.g., E201170031)
                 #inc_description = x.split[2]
             if(x[:] == "Location                                                        C/A  USE   OPER" and tmp_flag_location1 in(0,1)):
@@ -116,13 +138,6 @@ class cls_container():
             #inc_ems = True
         self.incident_list.append([this_incident_nbr, inc_date, inc_time, inc_description[:43].rstrip(), inc_location[:63].rstrip(), inc_fire, inc_ems])
 
-    def fct_search_string(self, arg_base_text):
-        ## return email search date (e.g., 01-JAN-2020) and additional text
-        wrk_date_delta = date.today()
-        wrk_build_string = 'SINCE 01-JAN-' + str(wrk_date_delta.year)
-        #wrk_build_string += ' OR (BODY "3691") (OR BODY "36109" BODY "36110")'
-        wrk_build_string += ' ' + arg_base_text
-        return wrk_build_string
 
     def fct_event_number(self, arg_incident_nbr):
         tmp_incident_nbr = arg_incident_nbr
@@ -137,6 +152,7 @@ class cls_container():
                 rtn_flag = 'E'
         else:
             print('******* DUPLICATE INCIDENT: ', tmp_incident_nbr)
+            self.overall_duplicatecount += 1
         return rtn_flag
 
     def fct_update_collection(self):
@@ -147,12 +163,16 @@ class cls_container():
 
         for x in self.incident_list:
             print(x)
+            ## Force local timezone rather than defaulting to UTC
             try:
-                wrk_datetime = datetime.strptime(x[1] + " " + x[2], "%m/%d/%y %H:%M:%S")
+                wrk_datetime_tmp = datetime.strptime(x[1] + " " + x[2], "%x %X")
+                wrk_datetime = self.time_zone_info.localize(wrk_datetime_tmp)
+                #print('checking datetime stuff: ', wrk_datetime_tmp, ' ', wrk_datetime)
             except:
-                pass
+                wrk_datetime = ''
+                #pass
             #
-            collection_counter.insert_one({"incident_nbr": x[0], "incident_date":(wrk_datetime), "incident_description":x[3], "incident_location":x[4], "fire_counter":x[5], "EMS_counter":x[6]})
+            collection_counter.insert_one({"incident_nbr": x[0], "incident_date":wrk_datetime, "incident_description":x[3], "incident_location":x[4], "fire_counter":x[5], "ems_counter":x[6]})
 
     def fct_sortandprint(self):
         print_ctr = 0
@@ -166,13 +186,14 @@ class cls_container():
             arg_mailbox_class.fct_cleanup()
         except:
             print('Issue logging out of mailbox')
-        print('Overall  fire_counter:', self.overall_firecount)
-        print('Overall   ems_counter:', self.overall_emscount)
-        print('Overall       counter:', self.overall_firecount + self.overall_emscount)
-        print('Overall email counter:', self.overall_emailcount)
-        print('Overall email2 counter:', self.overall_emailcount2)
-        print('Overall email3 counter:', self.overall_emailcount3)
-        print('          PGM counter:', len(self.incident_list))
+        print('Overall  (F) fire_counter:', self.overall_firecount)
+        print('Overall   (E) ems_counter:', self.overall_emscount)
+        print('Overall duplicate counter:', self.overall_duplicatecount)
+        print('Overall           counter:', self.overall_firecount + self.overall_emscount + self.overall_duplicatecount)
+        print('Overall     email counter:', self.overall_emailcount)
+        print('Overall    email2 counter:', self.overall_emailcount2)
+        print('Overall    email3 counter:', self.overall_emailcount3)
+        print('              PGM counter:', len(self.incident_list))
 
 #############################################################
 ### Begin mainline
