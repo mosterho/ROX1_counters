@@ -22,6 +22,9 @@ class cls_container:
         self.overall_emailcount3 = 0
         self.incident_list = []
         self.time_zone_info = pytz.timezone('America/New_York')
+        self.dct_dayofweek = {
+        0: "Monday", 1:"Tuesday", 2:"Wednesday", 3:"Thursday", 4:"Friday", 5:"Saturday", 6:"Sunday"
+        }
 
     def fct_read_email(self, arg_mailbox_class, arg_mailboxfolder):
         wrk_nbr_emails_ = arg_mailbox_class.CADEmails.select(mailbox=arg_mailboxfolder, readonly=True)
@@ -42,8 +45,6 @@ class cls_container:
                         content_type = part.get_content_type()
                         if content_type == "text/html":
                             self.overall_emailcount2 += 1
-                            #try:
-                                # get the email body
                             try:
                                 body = part.get_payload(decode=True).decode()
                                 #pass
@@ -59,12 +60,6 @@ class cls_container:
                                     break
                             self.fct_email_parse(body)
                             self.overall_emailcount3 += 1
-                            #try:
-                                #self.fct_email_parse(body)
-                                #self.overall_emailcount3 += 1
-                            #except Exception as e:
-                                #print('********** ERROR: This program''s code did not parse email correctly for ', e)
-                                #break
 
     def fct_search_string(self, arg_base_text):
         ## return email search date (e.g., 01-JAN-2020) and additional text
@@ -100,7 +95,7 @@ class cls_container:
                 if(tmp_return == ''):
                     break
                 tmp_incident_flag = True
-                print('debugging inc#:', this_incident_nbr)
+                #print('debugging inc#:', this_incident_nbr)
 
             if(x[:45] == 'Start Dt     Time       Situation/Description'):  ## Set flag to read next line, this contains the desired date_tuple
                 tmp_startdate_flag = True
@@ -162,17 +157,18 @@ class cls_container:
         collection_counter.delete_many({})
 
         for x in self.incident_list:
-            print(x)
-            ## Force local timezone rather than defaulting to UTC
-            try:
-                wrk_datetime_tmp = datetime.strptime(x[1] + " " + x[2], "%x %X")
-                wrk_datetime = self.time_zone_info.localize(wrk_datetime_tmp)
-                #print('checking datetime stuff: ', wrk_datetime_tmp, ' ', wrk_datetime)
-            except:
-                wrk_datetime = ''
-                #pass
+            if(x[1] != ''):
+                ## Force local timezone rather than defaulting to UTC
+                try:
+                    wrk_datetime_tmp = datetime.strptime(x[1] + " " + x[2], "%x %X")
+                    wrk_dayofweek = wrk_datetime_tmp.weekday()
+                    wrk_dayofweek_str = self.dct_dayofweek[wrk_dayofweek]
+                    wrk_datetime = self.time_zone_info.localize(wrk_datetime_tmp)
+                    #print(x, wrk_dayofweek, wrk_dayofweek_str)
+                except:
+                    wrk_datetime = ''
             #
-            collection_counter.insert_one({"incident_nbr": x[0], "incident_date":wrk_datetime, "incident_description":x[3], "incident_location":x[4], "fire_counter":x[5], "ems_counter":x[6]})
+            collection_counter.insert_one({"incident_nbr": x[0], "incident_date":wrk_datetime, "incident_dayofweek":wrk_dayofweek_str, "incident_description":x[3], "incident_location":x[4], "fire_counter":x[5], "ems_counter":x[6]})
 
     def fct_sortandprint(self):
         print_ctr = 0
