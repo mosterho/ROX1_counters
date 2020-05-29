@@ -14,8 +14,14 @@ db.getCollection("CAD_data").aggregate(
 		// Stage 2
 		{
 			$match: {
-			"ems_counter" : false, "incident_nbr":{"$regex": "^E"}, "$or":[{"proj_incdate.hour": {"$gte": 19}}, {"proj_incdate.hour": {"$lt": 05}}, {"incident_dayofweek" : "Saturday"}, {"incident_dayofweek" : "Sunday"}
-			 ]
+			"ems_counter" : false, "incident_nbr":{"$regex": "^E"},  "incident_dayofweek" : { 
+			            "$elemMatch" : { 
+			                "$in" : [
+			                    5.0, 
+			                    6.0
+			                ]
+			            }
+			        }
 			}
 		},
 	],

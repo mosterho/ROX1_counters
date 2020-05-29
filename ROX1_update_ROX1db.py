@@ -164,11 +164,12 @@ class cls_container:
                     wrk_dayofweek = wrk_datetime_tmp.weekday()
                     wrk_dayofweek_str = self.dct_dayofweek[wrk_dayofweek]
                     wrk_datetime = self.time_zone_info.localize(wrk_datetime_tmp)
+                    wrk_date_tuple = (wrk_dayofweek, wrk_dayofweek_str)
                     #print(x, wrk_dayofweek, wrk_dayofweek_str)
                 except:
                     wrk_datetime = ''
             #
-            collection_counter.insert_one({"incident_nbr": x[0], "incident_date":wrk_datetime, "incident_dayofweek":wrk_dayofweek_str, "incident_description":x[3], "incident_location":x[4], "fire_counter":x[5], "ems_counter":x[6]})
+            collection_counter.insert_one({"incident_nbr": x[0], "incident_date":wrk_datetime, "incident_dayofweek":wrk_date_tuple, "incident_description":x[3], "incident_location":x[4], "fire_counter":x[5], "ems_counter":x[6]})
 
     def fct_sortandprint(self):
         print_ctr = 0
