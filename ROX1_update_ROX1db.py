@@ -9,6 +9,7 @@
 
 import sys, email, ROX1_IMAP_access, pytz
 from datetime import datetime, date, time, tzinfo
+from operator import itemgetter
 from pymongo import MongoClient
 
 class cls_container:
@@ -49,13 +50,13 @@ class cls_container:
                                 body = part.get_payload(decode=True).decode()
                                 #pass
                             except Exception as e:
-                                print('********** ERROR: Get_payload didn"t work for 1st attempt using "decode"', e)
+                                print('********** ERROR: Get_payload failed on 1st attempt using "decode"', e)
                                 #print('********** ERROR: Get_payload didn''t work')
                                 try:
                                     body = part.get_payload()
                                     #pass
                                 except Exception as e:
-                                    print('********** ERROR: Get_payload didn"t work for 2nd attempt using straight string', e)
+                                    print('********** ERROR: Get_payload failed on 2nd attempt using straight string', e)
                                     #print('********** ERROR: Get_payload didn''t work')
                                     break
                             self.fct_email_parse(body)
@@ -92,8 +93,9 @@ class cls_container:
             if(x[:13] == 'Event Number:' and tmp_incident_flag == False):  #F201140011
                 this_incident_nbr = x[14:24]
                 tmp_return = self.fct_event_number(this_incident_nbr)
+                # if tmp_return is blank/empty string, this was a duplicate email
                 if(tmp_return == ''):
-                    break
+                    return
                 tmp_incident_flag = True
                 #print('debugging inc#:', this_incident_nbr)
 
@@ -124,7 +126,7 @@ class cls_container:
                 inc_ems = True
                 #print(this_incident_nbr, '  ', x)
             #elif(1==1):
-                break
+                #break
 
         ## Append the incident list, this will be used to update the Mongo databas
         if(this_incident_nbr[0] == 'E' and '3691' in arg_email or this_incident_nbr[0] == 'F'):
@@ -153,7 +155,7 @@ class cls_container:
     def fct_update_collection(self):
         client = MongoClient('Ubuntu18Server01')
         db = client.ROX1db
-        collection_counter = db.CAD_data
+        collection_counter = db.CADdata
         collection_counter.delete_many({})
 
         for x in self.incident_list:
@@ -175,10 +177,10 @@ class cls_container:
         print_ctr = 0
         tmp_incident_list = sorted(self.incident_list, key=itemgetter(1,2))  #sort by date and time
         for inc_data in tmp_incident_list:
-            print(inc_data)
+            print(inc_data[0], ' ', inc_data[1], ' ', inc_data[2], ' ', inc_data[3], ' ', inc_data[4], ' ' )
 
     def fct_finish(self, arg_mailbox_class):
-        #arg_mailbox_class.CADEmails.logout()
+        #
         try:
             arg_mailbox_class.fct_cleanup()
         except:
