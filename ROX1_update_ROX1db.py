@@ -23,6 +23,7 @@ class cls_container:
         self.overall_emailcount3 = 0
         self.incident_list = []
         self.time_zone_info = pytz.timezone('America/New_York')
+        self.UTC_timezone =   pytz.timezone('UTC')
         self.dct_dayofweek = {
         0: "Monday", 1:"Tuesday", 2:"Wednesday", 3:"Thursday", 4:"Friday", 5:"Saturday", 6:"Sunday"
         }
@@ -60,7 +61,7 @@ class cls_container:
                                     #print('********** ERROR: Get_payload didn''t work')
                                     break
                             self.fct_email_parse(body)
-                            self.overall_emailcount3 += 1
+                            self.overall_emailcount3 += 1  # add to counter, even if parse encountered duplicate email 
 
     def fct_search_string(self, arg_base_text):
         ## return email search date (e.g., 01-JAN-2020) and additional text
@@ -105,6 +106,7 @@ class cls_container:
                 #tmp_startdate_flag2 = True
                 inc_date = x_split[0]
                 inc_time = x_split[1]
+                #print(type(inc_date), inc_date, '   ', type(inc_time), inc_time)
                 tmp_special = x.split(maxsplit=4)  # special split to get full incident description
                 try:
                     if(tmp_special[4][30:40] != ''):
@@ -125,8 +127,7 @@ class cls_container:
             elif((x[:6] == 'E36109' or x[:6] == 'E36110') and x[20:22].isnumeric() and inc_ems == False):  # x[20:22] is "enroute" time
                 inc_ems = True
                 #print(this_incident_nbr, '  ', x)
-            #elif(1==1):
-                #break
+
 
         ## Append the incident list, this will be used to update the Mongo databas
         if(this_incident_nbr[0] == 'E' and '3691' in arg_email or this_incident_nbr[0] == 'F'):
@@ -159,19 +160,19 @@ class cls_container:
         collection_counter.delete_many({})
 
         for x in self.incident_list:
+            UTC_datetime = ''
             if(x[1] != ''):
-                ## Force local timezone rather than defaulting to UTC
+                ## Force datetime to UTC
                 try:
                     wrk_datetime_tmp = datetime.strptime(x[1] + " " + x[2], "%x %X")
-                    wrk_dayofweek = wrk_datetime_tmp.weekday()
-                    wrk_dayofweek_str = self.dct_dayofweek[wrk_dayofweek]
-                    wrk_datetime = self.time_zone_info.localize(wrk_datetime_tmp)
-                    wrk_date_tuple = (wrk_dayofweek, wrk_dayofweek_str)
-                    #print(x, wrk_dayofweek, wrk_dayofweek_str)
-                except:
-                    wrk_datetime = ''
-            #
-            collection_counter.insert_one({"incident_nbr": x[0], "incident_date":wrk_datetime, "incident_dayofweek":wrk_date_tuple, "incident_description":x[3], "incident_location":x[4], "fire_counter":x[5], "ems_counter":x[6]})
+                    #print('*** ', type(x[1]), '  ', type(x[2]), '  ', type(wrk_datetime_tmp))
+                    converted_datetime_local = self.time_zone_info.localize(wrk_datetime_tmp)
+                    UTC_datetime = converted_datetime_local.astimezone(self.UTC_timezone)
+                    print(converted_datetime_local, ' ', UTC_datetime)
+                except Exception as E:
+                    print('Error during timezone work: ', E)
+                #print('***** just before insert', wrk_datetime, '  ', self.time_zone_info.localize(wrk_datetime))
+            collection_counter.insert_one({"incident_nbr": x[0], "incident_date":UTC_datetime, "incident_description":x[3], "incident_location":x[4], "fire_counter":x[5], "ems_counter":x[6]})
 
     def fct_sortandprint(self):
         print_ctr = 0
