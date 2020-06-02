@@ -12,13 +12,15 @@ class class_email_counter:
         db = client.ROX1db
         collection_counter = db.CADdata
 
-        time_zone_info = pytz.timezone('America/New_York')
+        my_timezone = pytz.timezone('America/New_York')
+        UTC_timezone = pytz.timezone('UTC')
 
         wrk_fire_counter = collection_counter.find({"fire_counter":True}).count()
         dataset = collection_counter.find({"fire_counter":True}).sort("incident_date")
         print('Incident# ', '{:<25}'.format('Date/Time'), '{:<30}'.format("Location"), '{:<30}'.format("Description"))
         for loop1 in dataset:
-            wrk_incident_date = time_zone_info.localize(loop1["incident_date"])
+            wrk_incident_tmp = UTC_timezone.localize(loop1["incident_date"])
+            wrk_incident_date = wrk_incident_tmp.astimezone(my_timezone)
             #print(loop1["incident_nbr"],  loop1["incident_date"], '{:<30}'.format(loop1["incident_location"][:30]), '{:<30}'.format(loop1["incident_description"][:30]))
             print(loop1["incident_nbr"], wrk_incident_date, '{:<30}'.format(loop1["incident_location"][:30]), '{:<30}'.format(loop1["incident_description"][:30]))
 

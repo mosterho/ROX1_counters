@@ -1,6 +1,5 @@
 ###
-## open the "dispatches" mailbox, accumulate, print and count
-## the fire and EMS incident numbers and their respective totals
+## open the "dispatches" mailbox, 
 ##
 
 import sys

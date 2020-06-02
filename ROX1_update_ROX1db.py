@@ -36,7 +36,7 @@ class cls_container:
         typ, data = arg_mailbox_class.CADEmails.search(None, wrk_search_string)
         #### num contains the email ID to retrieve
         for num in data[0].split():
-            typ2, data2 = arg_mailbox_class.CADEmails.fetch(num, "RFC822")  # retrieve list of meial numbers
+            typ2, data2 = arg_mailbox_class.CADEmails.fetch(num, "RFC822")  # retrieve list of email numbers
             self.overall_emailcount += 1
             for data2_i in data2:
                 ## Checking for tuple will skip the b')' entry at the end of each email
@@ -49,19 +49,15 @@ class cls_container:
                             self.overall_emailcount2 += 1
                             try:
                                 body = part.get_payload(decode=True).decode()
-                                #pass
                             except Exception as e:
                                 print('********** ERROR: Get_payload failed on 1st attempt using "decode"', e)
-                                #print('********** ERROR: Get_payload didn''t work')
                                 try:
                                     body = part.get_payload()
-                                    #pass
                                 except Exception as e:
                                     print('********** ERROR: Get_payload failed on 2nd attempt using straight string', e)
-                                    #print('********** ERROR: Get_payload didn''t work')
                                     break
                             self.fct_email_parse(body)
-                            self.overall_emailcount3 += 1  # add to counter, even if parse encountered duplicate email 
+                            self.overall_emailcount3 += 1  # add to counter, even if parse encountered duplicate email
 
     def fct_search_string(self, arg_base_text):
         ## return email search date (e.g., 01-JAN-2020) and additional text
@@ -99,7 +95,6 @@ class cls_container:
                     return
                 tmp_incident_flag = True
                 #print('debugging inc#:', this_incident_nbr)
-
             if(x[:45] == 'Start Dt     Time       Situation/Description'):  ## Set flag to read next line, this contains the desired date_tuple
                 tmp_startdate_flag = True
             elif(tmp_startdate_flag and x[2:3] == '/' and x[5:6] == '/' and not tmp_startdate_found_flag): # 04/24/20 16:23:37  FND: 252   SMELL/ODOR/SOUND OF GAS LEAK INSIDE BUILD
@@ -127,7 +122,6 @@ class cls_container:
             elif((x[:6] == 'E36109' or x[:6] == 'E36110') and x[20:22].isnumeric() and inc_ems == False):  # x[20:22] is "enroute" time
                 inc_ems = True
                 #print(this_incident_nbr, '  ', x)
-
 
         ## Append the incident list, this will be used to update the Mongo databas
         if(this_incident_nbr[0] == 'E' and '3691' in arg_email or this_incident_nbr[0] == 'F'):
@@ -168,9 +162,9 @@ class cls_container:
                     #print('*** ', type(x[1]), '  ', type(x[2]), '  ', type(wrk_datetime_tmp))
                     converted_datetime_local = self.time_zone_info.localize(wrk_datetime_tmp)
                     UTC_datetime = converted_datetime_local.astimezone(self.UTC_timezone)
-                    print(converted_datetime_local, ' ', UTC_datetime)
+                    #print(converted_datetime_local, ' ', UTC_datetime)
                 except Exception as E:
-                    print('Error during timezone work: ', E)
+                    print('Error during timezone conversion: ', E)
                 #print('***** just before insert', wrk_datetime, '  ', self.time_zone_info.localize(wrk_datetime))
             collection_counter.insert_one({"incident_nbr": x[0], "incident_date":UTC_datetime, "incident_description":x[3], "incident_location":x[4], "fire_counter":x[5], "ems_counter":x[6]})
 
@@ -193,7 +187,7 @@ class cls_container:
         print('Overall     email counter:', self.overall_emailcount)
         print('Overall    email2 counter:', self.overall_emailcount2)
         print('Overall    email3 counter:', self.overall_emailcount3)
-        print('              PGM counter:', len(self.incident_list))
+        print('              PGM counter:', len(self.incident_list), '  (Should be difference of total email3 minus duplicates)')
 
 #############################################################
 ### Begin mainline
