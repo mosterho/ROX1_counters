@@ -28,6 +28,10 @@ class cls_container:
         0: "Monday", 1:"Tuesday", 2:"Wednesday", 3:"Thursday", 4:"Friday", 5:"Saturday", 6:"Sunday"
         }
 
+        client = MongoClient('Ubuntu18Server01')
+        db = client.ROX1db
+        self.collection_counter = db.CADdata
+
     def fct_read_email(self, arg_mailbox_class, arg_mailboxfolder):
         wrk_nbr_emails_ = arg_mailbox_class.CADEmails.select(mailbox=arg_mailboxfolder, readonly=True)
         wrk_parserclass = email.parser.BytesParser()
@@ -50,7 +54,7 @@ class cls_container:
                             try:
                                 body = part.get_payload(decode=True).decode()
                             except Exception as e:
-                                print('********** ERROR: Get_payload failed on 1st attempt using "decode"', e)
+                                #print('********** ERROR: Get_payload failed on 1st attempt using "decode"', e)
                                 try:
                                     body = part.get_payload()
                                 except Exception as e:
@@ -145,15 +149,24 @@ class cls_container:
         else:
             print('******* DUPLICATE INCIDENT: ', tmp_incident_nbr)
             self.overall_duplicatecount += 1
+        cursor = self.collection_counter.find_one({"incident_nbr":tmp_incident_nbr})
+        try:
+            for readit in cursor:
+                rtn_flag = ''
+                break
+        except:
+            pass
         return rtn_flag
 
     def fct_update_collection(self):
-        client = MongoClient('Ubuntu18Server01')
-        db = client.ROX1db
-        collection_counter = db.CADdata
-        collection_counter.delete_many({})
+        #client = MongoClient('Ubuntu18Server01')
+        #db = client.ROX1db
+        #collection_counter = db.CADdata
+        #self.collection_counter.delete_many({})
 
         for x in self.incident_list:
+            #cursor = self.collection_counter.find({"incident_nbr":x[0]})
+            #for readit in cursor:
             UTC_datetime = ''
             if(x[1] != ''):
                 ## Force datetime to UTC
@@ -166,13 +179,15 @@ class cls_container:
                 except Exception as E:
                     print('Error during timezone conversion: ', E)
                 #print('***** just before insert', wrk_datetime, '  ', self.time_zone_info.localize(wrk_datetime))
-            collection_counter.insert_one({"incident_nbr": x[0], "incident_date":UTC_datetime, "incident_description":x[3], "incident_location":x[4], "fire_counter":x[5], "ems_counter":x[6]})
+            self.collection_counter.insert_one({"incident_nbr": x[0], "incident_date":UTC_datetime, "incident_description":x[3], "incident_location":x[4], "fire_counter":x[5], "ems_counter":x[6]})
 
     def fct_sortandprint(self):
         print_ctr = 0
         tmp_incident_list = sorted(self.incident_list, key=itemgetter(1,2))  #sort by date and time
+        print("Print incident list")
         for inc_data in tmp_incident_list:
             print(inc_data[0], ' ', inc_data[1], ' ', inc_data[2], ' ', inc_data[3], ' ', inc_data[4], ' ' )
+        print("End of Print incident list")
 
     def fct_finish(self, arg_mailbox_class):
         #
@@ -187,7 +202,7 @@ class cls_container:
         print('Overall     email counter:', self.overall_emailcount)
         print('Overall    email2 counter:', self.overall_emailcount2)
         print('Overall    email3 counter:', self.overall_emailcount3)
-        print('              PGM counter:', len(self.incident_list), '  (Should be difference of total email3 minus duplicates)')
+        print('              PGM counter:', len(self.incident_list))
 
 #############################################################
 ### Begin mainline
@@ -208,7 +223,7 @@ if (__name__ == "__main__"):
     wrk_container.fct_update_collection()
 
     # Sort and print the detailed results from reading the inbox
-    #wrk_container.fct_sortandprint()
+    wrk_container.fct_sortandprint()
 
     # print summary, perform cleanup on mail server
     wrk_container.fct_finish(wrk_class)
