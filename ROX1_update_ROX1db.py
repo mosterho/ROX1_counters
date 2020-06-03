@@ -123,13 +123,15 @@ class cls_container:
                 inc_location = x
             if(x[:] == "Unit       Dispatch  Enroute  Arrived   Okay   Area Chk   Avail   Cleared" and tmp_flag_apparatus_header == False):
                 tmp_flag_apparatus_header = True
-            elif((x[:6] == 'E36109' or x[:6] == 'E36110') and x[20:22].isnumeric() and inc_ems == False):  # x[20:22] is "enroute" time
+            elif((x[:6] in('E36109', 'E36110')) and x[20:22].isnumeric() and inc_ems == False):  # x[20:22] is "enroute" time
                 inc_ems = True
+            elif((x[:4] == '3691' or x[:6] in ("F36BC1","F36Q11","F36E12","F36E13","F36T14","F36R16")) and inc_fire == False):
+                inc_fire = True
                 #print(this_incident_nbr, '  ', x)
 
         ## Append the incident list, this will be used to update the Mongo databas
-        if(this_incident_nbr[0] == 'E' and '3691' in arg_email or this_incident_nbr[0] == 'F'):
-            inc_fire = True
+        #if(this_incident_nbr[0] == 'E' and '3691' in arg_email or this_incident_nbr[0] == 'F'):
+            #inc_fire = True
         #if(this_incident_nbr[0] == 'F' and ('E36109' in arg_email or 'E36110' in arg_email)):
             #inc_ems = True
         self.incident_list.append([this_incident_nbr, inc_date, inc_time, inc_description[:43].rstrip(), inc_location[:63].rstrip(), inc_fire, inc_ems])
