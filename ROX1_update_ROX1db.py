@@ -1,6 +1,6 @@
 ###
-## open the "dispatches" mailbox, accumulate, print and count
-## the fire and EMS incident numbers and their respective totals
+## open the "dispatches" mailbox, accumulate, print and update
+## the fire and EMS incident numbers in a Mongo collection
 ##
 ## See the following link on using imap and email
 ## https://www.thepythoncode.com/article/reading-emails-in-python
@@ -151,11 +151,11 @@ class cls_container:
         else:
             print('******* DUPLICATE INCIDENT: ', tmp_incident_nbr)
             self.overall_duplicatecount += 1
-        cursor = self.collection_counter.find_one({"incident_nbr":tmp_incident_nbr})
+        cursor = self.collection_counter.find({"incident_nbr":tmp_incident_nbr})
         try:
             for readit in cursor:
                 rtn_flag = ''
-                break
+                #break
         except:
             pass
         return rtn_flag
