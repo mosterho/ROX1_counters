@@ -34,6 +34,11 @@ class cls_container:
         db = client.ROX1db
         self.collection_counter = db.CADdata
 
+        if(self.rebuild == 'Y'):
+            self.collection_counter.delete_many({})
+            if(self.verbose >= 1):
+                print('CAD collection deleted')
+
     def fct_read_email(self, arg_mailbox_class, arg_mailboxfolder):
         wrk_nbr_emails_ = arg_mailbox_class.CADEmails.select(mailbox=arg_mailboxfolder, readonly=True)
         wrk_parserclass = email.parser.BytesParser()
@@ -159,9 +164,6 @@ class cls_container:
 
     def fct_update_collection(self):
 
-        if(self.rebuild == 'Y'):
-            self.collection_counter.delete_many({})
-
         for x in self.incident_list:
             UTC_datetime = ''
             if(x[1] != ''):
@@ -201,7 +203,7 @@ class cls_container:
             print('Overall     email counter:', self.overall_emailcount)
             print('Overall    email2 counter:', self.overall_emailcount2)
             print('Overall    email3 counter:', self.overall_emailcount3)
-            print('              PGM counter:', len(self.incident_list))
+            print('  Incidents added counter:', len(self.incident_list))
 
 #############################################################
 ### Begin mainline
@@ -209,8 +211,8 @@ class cls_container:
 if (__name__ == "__main__"):
 
     ## work with argument parser to build correct parameter/argument values
-    wrk_parser = argparse.ArgumentParser(usage="The ROX1 Update program will update the CAD data from emails received in the Dispatches email. Arguments include 1. Purging the CAD collection (Y,N); 2. printing/debugging info")
-    wrk_parser.add_argument("rebuild", help="Rebuild the CAD collection (i.e., delete all data and start from scratch)", choices=['Y', 'N'], default='N')
+    wrk_parser = argparse.ArgumentParser(usage="The ROX1 Update program will update the CAD data from emails received in the Dispatches email. Arguments include 1. Rebuild the CAD collection (Y,N)  2. printing/debugging info")
+    wrk_parser.add_argument("-r", "--rebuild", help="Rebuild the CAD collection (i.e., delete all data and start from scratch). 'Y' will rebuild the CAD collection, 'N' (default) will add new entries only.", choices=['Y', 'N'], default='N')
     wrk_parser.add_argument("-v", "--verbose", help="Specifiy the level of vebose output, valid values are -v and -vv", action="count", default=0)
     rslt_parser = wrk_parser.parse_args()
 
@@ -228,7 +230,7 @@ if (__name__ == "__main__"):
     wrk_container.fct_update_collection()
 
     # Sort and print the detailed results from reading the inbox
-    if(rslt_parser.verbose >= 1):
+    if(rslt_parser.verbose >= 2):
         wrk_container.fct_sortandprint()
 
     # print summary, perform cleanup on mail server
