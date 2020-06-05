@@ -7,14 +7,16 @@
 ##
 
 
-import sys, email, ROX1_IMAP_access, pytz
+import sys, email, ROX1_IMAP_access, pytz, argparse
 from datetime import datetime, date, time, tzinfo
 from operator import itemgetter
 from pymongo import MongoClient
 
 class cls_container:
-    def __init__(self, arg_mailbox_class):
+    def __init__(self, arg_mailbox_class, arg_rebuild, arg_verbose):
         self.mailbox_class = arg_mailbox_class
+        self.rebuild = arg_rebuild
+        self.verbose = arg_verbose
         self.overall_firecount = 0
         self.overall_emscount = 0
         self.overall_duplicatecount = 0
@@ -58,7 +60,8 @@ class cls_container:
                                 try:
                                     body = part.get_payload()
                                 except Exception as e:
-                                    print('********** ERROR: Get_payload failed on 2nd attempt using straight string', e)
+                                    if(self.verbose >= 1):
+                                        print('********** ERROR: Get_payload failed on 2nd attempt using straight string', e)
                                     break
                             self.fct_email_parse(body)
                             self.overall_emailcount3 += 1  # add to counter, even if parse encountered duplicate email
@@ -94,6 +97,7 @@ class cls_container:
             if(x[:13] == 'Event Number:' and tmp_incident_flag == False):  #F201140011
                 this_incident_nbr = x[14:24]
                 tmp_return = self.fct_event_number(this_incident_nbr)
+                # tmp_return will normally have an 'F' or 'E'
                 # if tmp_return is blank/empty string, this was a duplicate email
                 if(tmp_return == ''):
                     return
@@ -102,7 +106,6 @@ class cls_container:
             if(x[:45] == 'Start Dt     Time       Situation/Description'):  ## Set flag to read next line, this contains the desired date_tuple
                 tmp_startdate_flag = True
             elif(tmp_startdate_flag and x[2:3] == '/' and x[5:6] == '/' and not tmp_startdate_found_flag): # 04/24/20 16:23:37  FND: 252   SMELL/ODOR/SOUND OF GAS LEAK INSIDE BUILD
-                #tmp_startdate_flag2 = True
                 inc_date = x_split[0]
                 inc_time = x_split[1]
                 #print(type(inc_date), inc_date, '   ', type(inc_time), inc_time)
@@ -110,8 +113,6 @@ class cls_container:
                 try:
                     if(tmp_special[4][30:40] != ''):
                         inc_description = tmp_special[4]
-                    #else:
-                        #inc_description = "*** Unexpected data/format of description"
                 except:
                     inc_description = "*** Unexpected data/format of description"
                 tmp_startdate_found_flag = True
@@ -129,13 +130,8 @@ class cls_container:
                 inc_fire = True
                 #print(this_incident_nbr, '  ', x)
 
-        ## Append the incident list, this will be used to update the Mongo databas
-        #if(this_incident_nbr[0] == 'E' and '3691' in arg_email or this_incident_nbr[0] == 'F'):
-            #inc_fire = True
-        #if(this_incident_nbr[0] == 'F' and ('E36109' in arg_email or 'E36110' in arg_email)):
-            #inc_ems = True
+        ## Append the incident list, this will be used to update the Mongo database
         self.incident_list.append([this_incident_nbr, inc_date, inc_time, inc_description[:43].rstrip(), inc_location[:63].rstrip(), inc_fire, inc_ems])
-
 
     def fct_event_number(self, arg_incident_nbr):
         tmp_incident_nbr = arg_incident_nbr
@@ -149,7 +145,8 @@ class cls_container:
                 self.overall_emscount += 1
                 rtn_flag = 'E'
         else:
-            print('******* DUPLICATE INCIDENT: ', tmp_incident_nbr)
+            if(self.verbose >= 1):
+                print('******* DUPLICATE INCIDENT: ', tmp_incident_nbr)
             self.overall_duplicatecount += 1
         cursor = self.collection_counter.find({"incident_nbr":tmp_incident_nbr})
         try:
@@ -161,14 +158,11 @@ class cls_container:
         return rtn_flag
 
     def fct_update_collection(self):
-        #client = MongoClient('Ubuntu18Server01')
-        #db = client.ROX1db
-        #collection_counter = db.CADdata
-        #self.collection_counter.delete_many({})
+
+        if(self.rebuild == 'Y'):
+            self.collection_counter.delete_many({})
 
         for x in self.incident_list:
-            #cursor = self.collection_counter.find({"incident_nbr":x[0]})
-            #for readit in cursor:
             UTC_datetime = ''
             if(x[1] != ''):
                 ## Force datetime to UTC
@@ -179,7 +173,8 @@ class cls_container:
                     UTC_datetime = converted_datetime_local.astimezone(self.UTC_timezone)
                     #print(converted_datetime_local, ' ', UTC_datetime)
                 except Exception as E:
-                    print('Error during timezone conversion: ', E)
+                    if(self.verbose >= 1):
+                        print('Error during timezone conversion: ', E)
                 #print('***** just before insert', wrk_datetime, '  ', self.time_zone_info.localize(wrk_datetime))
             self.collection_counter.insert_one({"incident_nbr": x[0], "incident_date":UTC_datetime, "incident_description":x[3], "incident_location":x[4], "fire_counter":x[5], "ems_counter":x[6]})
 
@@ -196,27 +191,35 @@ class cls_container:
         try:
             arg_mailbox_class.fct_cleanup()
         except:
-            print('Issue logging out of mailbox')
-        print('Overall  (F) fire_counter:', self.overall_firecount)
-        print('Overall   (E) ems_counter:', self.overall_emscount)
-        print('Overall duplicate counter:', self.overall_duplicatecount)
-        print('Overall           counter:', self.overall_firecount + self.overall_emscount + self.overall_duplicatecount)
-        print('Overall     email counter:', self.overall_emailcount)
-        print('Overall    email2 counter:', self.overall_emailcount2)
-        print('Overall    email3 counter:', self.overall_emailcount3)
-        print('              PGM counter:', len(self.incident_list))
+            if(self.verbose >= 1):
+                print('Issue logging out of mailbox')
+        if(self.verbose >= 1):
+            print('Overall  (F) fire_counter:', self.overall_firecount)
+            print('Overall   (E) ems_counter:', self.overall_emscount)
+            print('Overall duplicate counter:', self.overall_duplicatecount)
+            print('Overall           counter:', self.overall_firecount + self.overall_emscount + self.overall_duplicatecount)
+            print('Overall     email counter:', self.overall_emailcount)
+            print('Overall    email2 counter:', self.overall_emailcount2)
+            print('Overall    email3 counter:', self.overall_emailcount3)
+            print('              PGM counter:', len(self.incident_list))
 
 #############################################################
 ### Begin mainline
 
 if (__name__ == "__main__"):
 
+    ## work with argument parser to build correct parameter/argument values
+    wrk_parser = argparse.ArgumentParser(usage="The ROX1 Update program will update the CAD data from emails received in the Dispatches email. Arguments include 1. Purging the CAD collection (Y,N); 2. printing/debugging info")
+    wrk_parser.add_argument("rebuild", help="Rebuild the CAD collection (i.e., delete all data and start from scratch)", choices=['Y', 'N'], default='N')
+    wrk_parser.add_argument("-v", "--verbose", help="Specifiy the level of vebose output, valid values are -v and -vv", action="count", default=0)
+    rslt_parser = wrk_parser.parse_args()
+
     ## create a class object that connected to the mail server only
     wrk_class = ROX1_IMAP_access.cls_CAD_emails()
 
     ## create a second class that contains the mail server class from above
     ## This will contain the functions, etc. to read the emails from the mail server class
-    wrk_container = cls_container(wrk_class)
+    wrk_container = cls_container(wrk_class, rslt_parser.rebuild, rslt_parser.verbose)
 
     # Read a nd process the emails in the INBOX
     wrk_container.fct_read_email(wrk_class, 'INBOX')
@@ -225,7 +228,8 @@ if (__name__ == "__main__"):
     wrk_container.fct_update_collection()
 
     # Sort and print the detailed results from reading the inbox
-    wrk_container.fct_sortandprint()
+    if(rslt_parser.verbose >= 1):
+        wrk_container.fct_sortandprint()
 
     # print summary, perform cleanup on mail server
     wrk_container.fct_finish(wrk_class)

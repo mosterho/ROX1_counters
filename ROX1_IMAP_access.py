@@ -1,5 +1,5 @@
 ###
-## open the "dispatches" mailbox, 
+## open the "dispatches" mailbox,
 ##
 
 import sys
@@ -49,7 +49,7 @@ class cls_CAD_emails():
     def fct_cleanup(self):
         self.CADEmails.close()
         self.CADEmails.logout()
-        print('-'*50, ' IMAP CLOSE AND LOGOUT COMPLETE')
+        #print('-'*50, ' IMAP CLOSE AND LOGOUT COMPLETE')
 
 #############################################################
 ### Begin mainline
