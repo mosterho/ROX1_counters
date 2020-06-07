@@ -8,7 +8,9 @@
 
 
 import sys, email, ROX1_IMAP_access, pytz, argparse
-from datetime import datetime, date, time, tzinfo
+import logging
+#from datetime import datetime, date, time, tzinfo
+from datetime import datetime, date
 from operator import itemgetter
 from pymongo import MongoClient
 
@@ -24,20 +26,29 @@ class cls_container:
         self.overall_emailcount2 = 0
         self.overall_emailcount3 = 0
         self.incident_list = []
-        self.time_zone_info = pytz.timezone('America/New_York')
+        self.local_timezone = pytz.timezone('America/New_York')
         self.UTC_timezone =   pytz.timezone('UTC')
-        self.dct_dayofweek = {
-        0: "Monday", 1:"Tuesday", 2:"Wednesday", 3:"Thursday", 4:"Friday", 5:"Saturday", 6:"Sunday"
-        }
 
+        logging.basicConfig(filename='logging/ROX1_CAD.log',level=logging.DEBUG)
+        logging.info(self.fct_datetime_now() + ' *'*30)
+        logging.info(self.fct_datetime_now() + ' __init__ started...')
+
+        ## connect to Mongo collection
         client = MongoClient('Ubuntu18Server01')
         db = client.ROX1db
         self.collection_counter = db.CADdata
 
+        ## check argument to clear data from CAD collection
         if(self.rebuild == 'Y'):
             self.collection_counter.delete_many({})
             if(self.verbose >= 1):
-                print('CAD collection deleted')
+                print('CAD data deleted')
+            logging.info(self.fct_datetime_now() + ' CAD data deleted...')
+
+    def fct_datetime_now(self):
+        wrk_currentdt = datetime.now()
+        wrk_dtstring = wrk_currentdt.strftime('%Y %b %d %H:%M:%S')
+        return wrk_dtstring
 
     def fct_read_email(self, arg_mailbox_class, arg_mailboxfolder):
         wrk_nbr_emails_ = arg_mailbox_class.CADEmails.select(mailbox=arg_mailboxfolder, readonly=True)
@@ -67,6 +78,7 @@ class cls_container:
                                 except Exception as e:
                                     if(self.verbose >= 1):
                                         print('********** ERROR: Get_payload failed on 2nd attempt using straight string', e)
+                                        logging.error(fct_datetime_now() + ' ********** ERROR: Get_payload failed on 2nd attempt using straight string' + e)
                                     break
                             self.fct_email_parse(body)
                             self.overall_emailcount3 += 1  # add to counter, even if parse encountered duplicate email
@@ -152,6 +164,7 @@ class cls_container:
         else:
             if(self.verbose >= 1):
                 print('******* DUPLICATE INCIDENT: ', tmp_incident_nbr)
+            logging.info(self.fct_datetime_now() + ' ******* DUPLICATE INCIDENT: ' + tmp_incident_nbr)
             self.overall_duplicatecount += 1
         cursor = self.collection_counter.find({"incident_nbr":tmp_incident_nbr})
         try:
@@ -171,13 +184,14 @@ class cls_container:
                 try:
                     wrk_datetime_tmp = datetime.strptime(x[1] + " " + x[2], "%x %X")
                     #print('*** ', type(x[1]), '  ', type(x[2]), '  ', type(wrk_datetime_tmp))
-                    converted_datetime_local = self.time_zone_info.localize(wrk_datetime_tmp)
+                    converted_datetime_local = self.local_timezone.localize(wrk_datetime_tmp)
                     UTC_datetime = converted_datetime_local.astimezone(self.UTC_timezone)
                     #print(converted_datetime_local, ' ', UTC_datetime)
                 except Exception as E:
                     if(self.verbose >= 1):
                         print('Error during timezone conversion: ', E)
-                #print('***** just before insert', wrk_datetime, '  ', self.time_zone_info.localize(wrk_datetime))
+                    logging.error(self.fct_datetime_now() + ' Error during timezone conversion: ' + E)
+                #print('***** just before insert', wrk_datetime, '  ', self.local_timezone.localize(wrk_datetime))
             self.collection_counter.insert_one({"incident_nbr": x[0], "incident_date":UTC_datetime, "incident_description":x[3], "incident_location":x[4], "fire_counter":x[5], "ems_counter":x[6]})
 
     def fct_sortandprint(self):
@@ -186,6 +200,7 @@ class cls_container:
         print("Print incident list")
         for inc_data in tmp_incident_list:
             print(inc_data[0], ' ', inc_data[1], ' ', inc_data[2], ' ', inc_data[3], ' ', inc_data[4], ' ' )
+            logging.info(self.fct_datetime_now() + ' ADDED to CAD collection: ' + inc_data[0] + ' ' + inc_data[1] + ' ' + inc_data[2] + ' ' + inc_data[3] + ' ' + inc_data[4])
         print("End of Print incident list")
 
     def fct_finish(self, arg_mailbox_class):
@@ -195,15 +210,18 @@ class cls_container:
         except:
             if(self.verbose >= 1):
                 print('Issue logging out of mailbox')
-        if(self.verbose >= 1):
-            print('Overall  (F) fire_counter:', self.overall_firecount)
-            print('Overall   (E) ems_counter:', self.overall_emscount)
+            logging.error(self.fct_datetime_now() + ' Issue logging out of mailbox' )
+        if(self.verbose >= 2):
+            print('Overall  (F) fire counter:', self.overall_firecount)
+            print('Overall   (E) ems counter:', self.overall_emscount)
             print('Overall duplicate counter:', self.overall_duplicatecount)
             print('Overall           counter:', self.overall_firecount + self.overall_emscount + self.overall_duplicatecount)
             print('Overall     email counter:', self.overall_emailcount)
             print('Overall    email2 counter:', self.overall_emailcount2)
             print('Overall    email3 counter:', self.overall_emailcount3)
+        if(self.verbose >= 1):
             print('  Incidents added counter:', len(self.incident_list))
+        logging.info(self.fct_datetime_now() + ' Incidents added counter: ' + str(len(self.incident_list)))
 
 #############################################################
 ### Begin mainline
@@ -230,7 +248,7 @@ if (__name__ == "__main__"):
     wrk_container.fct_update_collection()
 
     # Sort and print the detailed results from reading the inbox
-    if(rslt_parser.verbose >= 2):
+    if(rslt_parser.verbose >= 1):
         wrk_container.fct_sortandprint()
 
     # print summary, perform cleanup on mail server
