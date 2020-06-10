@@ -86,7 +86,8 @@ class cls_container:
     def fct_search_string(self, arg_base_text):
         ## return email search date (e.g., 01-JAN-2020) and additional text
         wrk_date_today = date.today()
-        wrk_build_string = 'SINCE 01-JAN-' + str(wrk_date_today.year)
+        wrk_build_string = ''
+        #wrk_build_string = 'SINCE 01-JAN-' + str(wrk_date_today.year)
         #wrk_build_string += ' OR (BODY "3691") (OR BODY "36109" BODY "36110")'
         wrk_build_string += ' ' + arg_base_text
         return wrk_build_string
@@ -176,7 +177,6 @@ class cls_container:
         return rtn_flag
 
     def fct_update_collection(self):
-
         for x in self.incident_list:
             UTC_datetime = ''
             if(x[1] != ''):
@@ -241,11 +241,26 @@ if (__name__ == "__main__"):
     ## This will contain the functions, etc. to read the emails from the mail server class
     wrk_container = cls_container(wrk_class, rslt_parser.rebuild, rslt_parser.verbose)
 
-    # Read a nd process the emails in the INBOX
-    wrk_container.fct_read_email(wrk_class, 'INBOX')
-
+    # Read and process the emails in the INBOX, then
     # Read list just created and load into MongoDB collection
+    wrk_container.fct_read_email(wrk_class, 'INBOX')
     wrk_container.fct_update_collection()
+    '''
+    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.1-2017')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.2-2017')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.3-2017')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.4-2017')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.5-2017')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.6-2017')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.7-2017')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.8-2017')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.9-2017')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.10-2017')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.11-2017')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.12-2017')
+    wrk_container.fct_update_collection()
+    '''
 
     # Sort and print the detailed results from reading the inbox
     if(rslt_parser.verbose >= 1):
