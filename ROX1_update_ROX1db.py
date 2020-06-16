@@ -26,6 +26,7 @@ class cls_container:
         self.overall_emailcount2 = 0
         self.overall_emailcount3 = 0
         self.incident_list = []
+        self.apparatus_list = []
         self.local_timezone = pytz.timezone('America/New_York')
         self.UTC_timezone =   pytz.timezone('UTC')
 
@@ -37,10 +38,12 @@ class cls_container:
         client = MongoClient('Ubuntu18Server01')
         db = client.ROX1db
         self.collection_counter = db.CADdata
+        self.collection_apparatus = db.CADapparatus
 
         ## check argument to clear data from CAD collection
         if(self.rebuild == 'Y'):
             self.collection_counter.delete_many({})
+            self.collection_apparatus.delete_many({})
             if(self.verbose >= 1):
                 print('CAD data deleted')
             logging.info(self.fct_datetime_now() + ' CAD data deleted...')
@@ -99,7 +102,7 @@ class cls_container:
             split_bodytext = ''
         ## go through individual lines of email body, find incident number, etc.
         tmp_startdate_flag, tmp_startdate_found_flag, tmp_startdate_flag2, tmp_flag_location1, tmp_flag_location2 = False, False, False, 0, False
-        tmp_incident_flag, tmp_flag_apparatus_header = False, False
+        tmp_incident_flag, tmp_flag_apparatus_header, tmp_flag_apparatus_header2, tmp_flag_apparatus_header3 = False, False, False, False
         this_incident_nbr = ''
         inc_date = ''
         inc_time = ''
@@ -107,7 +110,7 @@ class cls_container:
         inc_location = ''
         inc_fire = False
         inc_ems = False
-        apparatus_list = []
+        inc_apparatus = ''
 
         for x in split_bodytext:
             x_split = x.split()
@@ -121,7 +124,7 @@ class cls_container:
                     return
                 tmp_incident_flag = True
                 #print('debugging inc#:', this_incident_nbr)
-            if(x[:45] == 'Start Dt     Time       Situation/Description'):  ## Set flag to read next line, this contains the desired date_tuple
+            if('Start Dt     Time       Situation/Description' in x and not tmp_startdate_flag):  ## Set flag to read next line, this contains the desired date_tuple
                 tmp_startdate_flag = True
             elif(tmp_startdate_flag and x[2:3] == '/' and x[5:6] == '/' and not tmp_startdate_found_flag): # 04/24/20 16:23:37  FND: 252   SMELL/ODOR/SOUND OF GAS LEAK INSIDE BUILD
                 inc_date = x_split[0]
@@ -136,17 +139,33 @@ class cls_container:
                 tmp_startdate_found_flag = True
             #elif(inc_description == '' and inc_date != ''):   # once in a while, the description is on the line after date/time (e.g., E201170031)
                 #inc_description = x.split[2]
-            if(x[:] == "Location                                                        C/A  USE   OPER" and tmp_flag_location1 in(0,1)):
+            if("Location                                                        C/A  USE   OPER" in x and tmp_flag_location1 in(0,1)):
                 tmp_flag_location1 += 1
-            elif(x[:] != "Location                                                        C/A  USE   OPER" and tmp_flag_location1 >= 1 and inc_location == ''):
+            elif("Location                                                        C/A  USE   OPER" not in x and tmp_flag_location1 >= 1 and inc_location == ''):
                 inc_location = x
-            if(x[:] == "Unit       Dispatch  Enroute  Arrived   Okay   Area Chk   Avail   Cleared" and tmp_flag_apparatus_header == False):
+
+            ## Check next section of email for apparatus details
+            if("Unit       Dispatch  Enroute  Arrived   Okay   Area Chk   Avail   Cleared" in x and tmp_flag_apparatus_header == False):
                 tmp_flag_apparatus_header = True
-            elif((x[:6] in('E36109', 'E36110')) and x[20:22].isnumeric() and inc_ems == False):  # x[20:22] is "enroute" time
-                inc_ems = True
-            elif((x[:4] == '3691' or x[:6] in ("F36BC1","F36Q11","F36E12","F36E13","F36T14","F36R16")) and inc_fire == False):
-                inc_fire = True
-                #print(this_incident_nbr, '  ', x)
+            elif((x[:6] in('E36109', 'E36110')) and x[20:22].isnumeric() and tmp_flag_apparatus_header):  # x[20:22] is "enroute" time
+                if(inc_ems == False):
+                    inc_ems = True
+                self.fct_apparatus_update(x, this_incident_nbr, 'section1')
+            elif((x[:4] == '3691' and '                        ' not in x[20:56] 
+                or x[:6] in ("F36BC1","F36Q11","F36E12","F36E13","F36T14","F36R16")) and tmp_flag_apparatus_header):
+                if(inc_fire == False):
+                    inc_fire = True
+                self.fct_apparatus_update(x, this_incident_nbr, 'section1')
+            if("Unit        EnSta    ArSta    EnHosp   ArHosp  Hospital  EnJail   ArJail" in x and tmp_flag_apparatus_header2 == False):
+                tmp_flag_apparatus_header, tmp_flag_apparatus_header2 = False, True
+            elif((( x[:6] in('E36109', 'E36110') and x[11:13].isnumeric()) or x[:6] in ("F36BC1","F36Q11","F36E12","F36E13","F36T14","F36R16")) and tmp_flag_apparatus_header2 == True):  # x[11:13] is EnSta time
+                self.fct_apparatus_update(x, this_incident_nbr, 'section2')
+            if("Unit       Reduce Speed Reason         Recalled Reason          Staged" in x and tmp_flag_apparatus_header3 == False):
+                tmp_flag_apparatus_header2, tmp_flag_apparatus_header3 = False, True
+            elif(tmp_flag_apparatus_header3):
+                #self.fct_apparatus_update(x, this_incident_nbr, 'section3')
+                pass  #for future
+
 
         ## Append the incident list, this will be used to update the Mongo database
         self.incident_list.append([this_incident_nbr, inc_date, inc_time, inc_description[:43].rstrip(), inc_location[:63].rstrip(), inc_fire, inc_ems])
@@ -176,14 +195,70 @@ class cls_container:
             pass
         return rtn_flag
 
+    def fct_apparatus_update(self, arg_x, arg_incident_number, arg_section):
+        try:
+            wrk_x = arg_x
+            wrk_incident_number = arg_incident_number
+            wrk_section = arg_section
+            wrk_x_split = wrk_x.split()
+            # section1 is for the first header encountered for apparatus times
+            if(arg_section == 'section1'):
+                if(wrk_x[11:13] != '  '):
+                    wrk_dispatch = str(wrk_x[11:19])
+                else:
+                    wrk_dispatch = ''
+                if(wrk_x[20:28] != '        '):
+                    wrk_enroute = str(wrk_x[20:28])
+                else:
+                    wrk_enroute = ''
+                if(wrk_x[29:37] != '        '):
+                    wrk_arrive = str(wrk_x[29:37])
+                else:
+                    wrk_arrive = ''
+                if(wrk_x[56:64] != '        '):
+                    wrk_available = str(wrk_x[56:64])
+                else:
+                    wrk_available = ''
+                if(wrk_x[65:73] != '        '):
+                    wrk_cleared = wrk_x[65:73]
+                else:
+                    wrk_cleared = ''
+                self.apparatus_list.append([wrk_incident_number + '_' + wrk_x_split[0], wrk_dispatch, wrk_enroute, wrk_arrive, wrk_available, wrk_cleared])
+                #pass
+            elif(arg_section == 'section2'):
+                if(wrk_x[11:13] != '  '):
+                    wrk_enroutestation = str(wrk_x[11:19])
+                else:
+                    wrk_enroutestation = ''
+                if(wrk_x[29:37] != '        '):
+                    wrk_enroutehosp = str(wrk_x[29:37])
+                else:
+                    wrk_enroutehosp = ''
+                if(wrk_x[38:46] != '        '):
+                    wrk_arrivehosp = str(wrk_x[38:46])
+                else:
+                    wrk_arrivehosp = ''
+                tmp_count = 0
+                for i in self.apparatus_list:
+                    if(i[0] == wrk_incident_number + '_' + wrk_x_split[0]):
+                        self.apparatus_list[tmp_count].extend([wrk_enroutestation, wrk_enroutehosp, wrk_arrivehosp])
+                        #logging.info(self.fct_datetime_now() + ' ** TEMP info apparatus found in list in fct_apparatus_update: ')
+                    tmp_count += 1
+                #pass
+            elif(arg_section == 'section3'):
+                pass
+            #logging.info(self.fct_datetime_now() + ' info apparatus list in fct_apparatus_update: ' + str(self.apparatus_list))
+        except Exception as E:
+            logging.info(self.fct_datetime_now() + ' info/warning during fct_apparatus_update: ' + E)
+
     def fct_update_collection(self):
+        ### update the incident details
         for x in self.incident_list:
             UTC_datetime = ''
             if(x[1] != ''):
                 ## Force datetime to UTC
                 try:
                     wrk_datetime_tmp = datetime.strptime(x[1] + " " + x[2], "%x %X")
-                    #print('*** ', type(x[1]), '  ', type(x[2]), '  ', type(wrk_datetime_tmp))
                     converted_datetime_local = self.local_timezone.localize(wrk_datetime_tmp)
                     UTC_datetime = converted_datetime_local.astimezone(self.UTC_timezone)
                     #print(converted_datetime_local, ' ', UTC_datetime)
@@ -193,6 +268,33 @@ class cls_container:
                     logging.error(self.fct_datetime_now() + ' Error during timezone conversion: ' + E)
                 #print('***** just before insert', wrk_datetime, '  ', self.local_timezone.localize(wrk_datetime))
             self.collection_counter.insert_one({"incident_nbr": x[0], "incident_date":UTC_datetime, "incident_description":x[3], "incident_location":x[4], "fire_counter":x[5], "ems_counter":x[6]})
+
+        ### Now update the CAD apparatus details
+        for x in self.apparatus_list:
+            #pass
+            try:
+                tmp_incident_nbr = x[0][0:10]
+                tmp_apparatus = x[0][11:17]
+                tmp_dispatch = x[1]
+                tmp_enroute = x[2]
+                tmp_arrive = x[3]
+                tmp_available = x[4]
+                tmp_cleared = x[5]
+                if(len(x)>6):
+                    tmp_enroutestation = x[6]
+                    tmp_enroutehospital = x[7]
+                    tmp_arrivehospital = x[8]
+                else:
+                    tmp_enroutestation = ''
+                    tmp_enroutehospital = ''
+                    tmp_arrivehospital = ''
+                self.collection_apparatus.insert_one({"incident_nbr": x[0][0:10], "apparatus":x[0][11:17], "dispatch":x[1],
+                    "enroute":x[2], "arrive_scene":x[3],
+                    "enroute_hospital":tmp_enroutehospital, "arrive_hospital":tmp_arrivehospital,
+                    "enroute_station":tmp_enroutestation, "available":x[4], "clear":x[5]})
+            except Exception as E:
+                logging.error(self.fct_datetime_now() + ' Error while assigning values to apparatus CADdata collection: ' + E + '\n' + x)
+
 
     def fct_sortandprint(self):
         print_ctr = 0
@@ -204,7 +306,6 @@ class cls_container:
         print("End of Print incident list")
 
     def fct_finish(self, arg_mailbox_class):
-        #
         try:
             arg_mailbox_class.fct_cleanup()
         except:
@@ -244,8 +345,9 @@ if (__name__ == "__main__"):
     # Read and process the emails in the INBOX, then
     # Read list just created and load into MongoDB collection
     wrk_container.fct_read_email(wrk_class, 'INBOX')
-    wrk_container.fct_update_collection()
-    '''
+    #wrk_container.fct_update_collection()
+
+    #'''
     wrk_container.fct_read_email(wrk_class, 'INBOX.Archived')
     wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.1-2017')
     wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.2-2017')
@@ -259,8 +361,35 @@ if (__name__ == "__main__"):
     wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.10-2017')
     wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.11-2017')
     wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.12-2017')
+
+    wrk_container.fct_read_email(wrk_class, 'INBOX.2018.1-2018')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.2018.2-2018')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.2018.3-2018')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.2018.4-2018')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.2018.5-2018')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.2018.6-2018')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.2018.7-2018')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.2018.8-2018')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.2018.9-2018')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.2018.10-2018')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.2018.11-2018')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.2018.12-2018')
+
+    wrk_container.fct_read_email(wrk_class, 'INBOX.2019.1-2019')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.2019.2-2019')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.2019.3-2019')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.2019.4-2019')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.2019.5-2019')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.2019.6-2019')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.2019.7-2019')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.2019.8-2019')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.2019.9-2019')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.2019.10-2019')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.2019.11-2019')
+    wrk_container.fct_read_email(wrk_class, 'INBOX.2019.12-2019')
+
     wrk_container.fct_update_collection()
-    '''
+    #'''
 
     # Sort and print the detailed results from reading the inbox
     if(rslt_parser.verbose >= 1):

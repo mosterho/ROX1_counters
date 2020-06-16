@@ -1,7 +1,7 @@
 ###
 ## Fire counter for white board
 
-import sys, pytz
+import sys, pytz, datetime
 from pymongo import MongoClient
 #from datetime import datetime, date, time, tzinfo
 
@@ -16,7 +16,9 @@ class class_email_counter:
         UTC_timezone = pytz.timezone('UTC')
 
         wrk_email_counter, wrk_fire_counter = 0, 0
-        dataset = collection_counter.find({"$or":[{"incident_nbr":{"$regex":"^F"}}, {"fire_counter":True}]}).sort("incident_date")
+        wrk_finddate = datetime.datetime(2020,1,1,0,0,0)
+        dataset = collection_counter.find({"$or":[{"incident_nbr":{"$regex":"^F"}}, {"fire_counter":True}],
+            "incident_date":{"$gte": wrk_finddate}}).sort("incident_date")
         print('Email', 'Incident# ', '{:<25}'.format('Date/Time'), '{:<30}'.format("Location"), '{:<30}'.format("Description"))
         for loop1 in dataset:
             wrk_incident_tmp = UTC_timezone.localize(loop1["incident_date"])
