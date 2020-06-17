@@ -151,7 +151,7 @@ class cls_container:
                 if(inc_ems == False):
                     inc_ems = True
                 self.fct_apparatus_update(x, this_incident_nbr, 'section1')
-            elif((x[:4] == '3691' and '                        ' not in x[20:56] 
+            elif((x[:4] == '3691' and '                        ' not in x[20:56]
                 or x[:6] in ("F36BC1","F36Q11","F36E12","F36E13","F36T14","F36R16")) and tmp_flag_apparatus_header):
                 if(inc_fire == False):
                     inc_fire = True
@@ -342,54 +342,51 @@ if (__name__ == "__main__"):
     ## This will contain the functions, etc. to read the emails from the mail server class
     wrk_container = cls_container(wrk_class, rslt_parser.rebuild, rslt_parser.verbose)
 
-    # Read and process the emails in the INBOX, then
-    # Read list just created and load into MongoDB collection
+    # Read and process all emails in the INBOXs (depending on the rebuild option), then
+    # read list just created and load into MongoDB collection
+    if(rslt_parser.rebuild == 'Y'):
+        wrk_container.fct_read_email(wrk_class, 'INBOX.Archived')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.1-2017')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.2-2017')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.3-2017')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.4-2017')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.5-2017')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.6-2017')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.7-2017')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.8-2017')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.9-2017')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.10-2017')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.11-2017')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.12-2017')
+
+        wrk_container.fct_read_email(wrk_class, 'INBOX.2018.1-2018')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.2018.2-2018')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.2018.3-2018')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.2018.4-2018')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.2018.5-2018')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.2018.6-2018')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.2018.7-2018')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.2018.8-2018')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.2018.9-2018')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.2018.10-2018')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.2018.11-2018')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.2018.12-2018')
+
+        wrk_container.fct_read_email(wrk_class, 'INBOX.2019.1-2019')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.2019.2-2019')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.2019.3-2019')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.2019.4-2019')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.2019.5-2019')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.2019.6-2019')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.2019.7-2019')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.2019.8-2019')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.2019.9-2019')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.2019.10-2019')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.2019.11-2019')
+        wrk_container.fct_read_email(wrk_class, 'INBOX.2019.12-2019')
+
     wrk_container.fct_read_email(wrk_class, 'INBOX')
-    #wrk_container.fct_update_collection()
-
-    #'''
-    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.1-2017')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.2-2017')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.3-2017')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.4-2017')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.5-2017')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.6-2017')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.7-2017')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.8-2017')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.9-2017')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.10-2017')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.11-2017')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.Archived.12-2017')
-
-    wrk_container.fct_read_email(wrk_class, 'INBOX.2018.1-2018')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.2018.2-2018')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.2018.3-2018')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.2018.4-2018')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.2018.5-2018')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.2018.6-2018')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.2018.7-2018')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.2018.8-2018')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.2018.9-2018')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.2018.10-2018')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.2018.11-2018')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.2018.12-2018')
-
-    wrk_container.fct_read_email(wrk_class, 'INBOX.2019.1-2019')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.2019.2-2019')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.2019.3-2019')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.2019.4-2019')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.2019.5-2019')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.2019.6-2019')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.2019.7-2019')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.2019.8-2019')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.2019.9-2019')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.2019.10-2019')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.2019.11-2019')
-    wrk_container.fct_read_email(wrk_class, 'INBOX.2019.12-2019')
-
     wrk_container.fct_update_collection()
-    #'''
 
     # Sort and print the detailed results from reading the inbox
     if(rslt_parser.verbose >= 1):
