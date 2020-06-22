@@ -8,7 +8,7 @@ from pymongo import MongoClient
 class class_email_counter:
     def __init__(self):
 
-        client = MongoClient('Ubuntu18Server01')
+        client = MongoClient('mongodb')
         db = client.ROX1db
         collection_counter = db.CADdata
 

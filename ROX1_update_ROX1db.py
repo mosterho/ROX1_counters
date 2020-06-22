@@ -35,7 +35,7 @@ class cls_container:
         logging.info(self.fct_datetime_now() + ' __init__ started...')
 
         ## connect to Mongo collection
-        client = MongoClient('Ubuntu18Server01')
+        client = MongoClient('mongodb')
         db = client.ROX1db
         self.collection_counter = db.CADdata
         self.collection_apparatus = db.CADapparatus
