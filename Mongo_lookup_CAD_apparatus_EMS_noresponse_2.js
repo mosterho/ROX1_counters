@@ -33,24 +33,6 @@ __3tsoftwarelabs_disabled_aggregation_stages = [
 	},
 
 	{
-		// Stage 6 - excluded
-		stage: 6,  source: {
-			$match: {
-			    "dayofweek":{$in: [1,7]}
-			}
-		}
-	},
-
-	{
-		// Stage 7 - excluded
-		stage: 7,  source: {
-			$match: {
-			    "hourofcall":{$in:[9,10,11,12,13,14,15,16,17,18,19,20,21,22]}
-			}
-		}
-	},
-
-	{
 		// Stage 10 - excluded
 		stage: 10,  source: {
 			$bucketAuto: {
@@ -73,7 +55,7 @@ db.getCollection("CADdata").aggregate(
 			    "dayofweek": {$dayOfWeek: "$incident_date" }, 
 			    "hourofcall":{$hour: "$incident_date"}, 
 			    "yearofcall":{$year:"$incident_date"}, "monthofcall":{$month:"$incident_date"},
-			   //"hourofcall2":{$hour: {"$incident_date", timezone:"America/New_York"}}
+			    //"hourofcall2":{$hour: {"$incident_date", timezone:"America/New_York"}}
 			}
 		},
 
@@ -88,6 +70,20 @@ db.getCollection("CADdata").aggregate(
 		{
 			$match: {
 			    "incident_nbr": /^E.*/i
+			}
+		},
+
+		// Stage 6
+		{
+			$match: {
+			    "dayofweek":{$in: [1,7]}
+			}
+		},
+
+		// Stage 7
+		{
+			$match: {
+			    "hourofcall":{$in:[9,10,11,12,13,14,15,16,17,18,19,20,21,22]}
 			}
 		},
 

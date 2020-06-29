@@ -273,13 +273,6 @@ class cls_container:
         for x in self.apparatus_list:
             #pass
             try:
-                tmp_incident_nbr = x[0][0:10]
-                tmp_apparatus = x[0][11:17]
-                tmp_dispatch = x[1]
-                tmp_enroute = x[2]
-                tmp_arrive = x[3]
-                tmp_available = x[4]
-                tmp_cleared = x[5]
                 if(len(x)>6):
                     tmp_enroutestation = x[6]
                     tmp_enroutehospital = x[7]
