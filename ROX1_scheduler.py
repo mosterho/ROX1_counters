@@ -6,7 +6,7 @@
 
 import sys, subprocess, time
 
-wrk_time = int(sys.argv[1])
+wrk_time = int(sys.argv[1])  # time to sleep in seconds
 
 while 1==1:
     print("\r{:60s}\r".format('Update running...'), end='', flush=True)
