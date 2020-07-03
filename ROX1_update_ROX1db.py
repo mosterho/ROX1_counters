@@ -51,7 +51,7 @@ class cls_container:
     def fct_datetime_now(self):
         wrk_currentdt = datetime.now()
         wrk_dtstring = wrk_currentdt.strftime('%Y %b %d %H:%M:%S')
-        return wrk_dtstring
+        return wrk_dtstring + ' ' + sys.argv[0]
 
     def fct_read_email(self, arg_mailbox_class, arg_mailboxfolder):
         wrk_nbr_emails_ = arg_mailbox_class.CADEmails.select(mailbox=arg_mailboxfolder, readonly=True)

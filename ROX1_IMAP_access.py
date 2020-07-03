@@ -19,7 +19,7 @@ class cls_CAD_emails():
             mailbox_context = ssl.create_default_context()
             self.CADEmails = imaplib.IMAP4_SSL(host=self.wrk_host, port=993)
             #self.CADEmails.starttls(ssl_context=mailbox_context)   # error message that TLS is not supported (??)
-            # doing NETSTAT while running this program shows port 993 is open
+            # running NETSTAT in another window while running this program shows port 993 is open
 
             self.CADEmails.login(self.wrk_login, self.wrk_pwd)
             self.overall_firecount = 0
@@ -27,7 +27,7 @@ class cls_CAD_emails():
             self.incident_list = []
             # create empty passlib object
         except Exception as e:
-            logging.error(fct_datetime_now() + ' ********** ERROR: cls_CAD_emails in ' + sys.argv[0] + ' failed as follows: ' + e)
+            logging.error(fct_datetime_now() + ' ********** ERROR: cls_CAD_emails in ' + ' failed as follows: ' + e)
 
     def fct_read_json(self):
         try:
@@ -52,19 +52,19 @@ class cls_CAD_emails():
             self.wrk_pwd = tmp_decrypted_password.decode()
             #print("pwd:", (self.wrk_pwd))
         except Exception as e:
-            logging.error(fct_datetime_now() + ' ********** ERROR: fct_read_json in ' + sys.argv[0] + ' failed as follows: ' + e)
+            logging.error(fct_datetime_now() + ' ********** ERROR: fct_read_json in ' + ' failed as follows: ' + e)
 
     def fct_datetime_now(self):
         wrk_currentdt = datetime.now()
         wrk_dtstring = wrk_currentdt.strftime('%Y %b %d %H:%M:%S')
-        return wrk_dtstring
+        return wrk_dtstring + ' ' + sys.argv[0]
 
     def fct_cleanup(self):
         try:
             self.CADEmails.close()
             self.CADEmails.logout()
         except Exception as e:
-            logging.error(fct_datetime_now() + ' ********** ERROR: fct_cleanup ' + sys.argv[0] + ' failed as follows: ' + e)
+            logging.error(fct_datetime_now() + ' ********** ERROR: fct_cleanup ' + ' failed as follows: ' + e)
 
 #############################################################
 ### Begin mainline
