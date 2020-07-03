@@ -7,7 +7,7 @@
 ##
 
 
-import sys, email, ROX1_IMAP_access, pytz, argparse
+import sys, email, ROX1_logging, ROX1_IMAP_access, pytz, argparse
 import logging
 #from datetime import datetime, date, time, tzinfo
 from datetime import datetime, date
@@ -30,9 +30,11 @@ class cls_container:
         self.local_timezone = pytz.timezone('America/New_York')
         self.UTC_timezone =   pytz.timezone('UTC')
 
-        logging.basicConfig(filename='logging/ROX1_CAD.log',level=logging.DEBUG)
-        logging.info(self.fct_datetime_now() + ' *'*30)
-        logging.info(self.fct_datetime_now() + ' __init__ started...')
+        #logging.basicConfig(filename='logging/ROX1_CAD.log',level=logging.DEBUG)
+        #logging.info(self.fct_datetime_now() + ' *'*30)
+        #logging.info(self.fct_datetime_now() + ' __init__ started...')
+        ROX1_logging.fct_ROX1_log('info', sys.argv[0], ' *'*30)
+        ROX1_logging.fct_ROX1_log('info', sys.argv[0], str(' __init__' +  ' started...'))
 
         ## connect to Mongo collection
         client = MongoClient('mongodb')
@@ -46,7 +48,8 @@ class cls_container:
             self.collection_apparatus.delete_many({})
             if(self.verbose >= 1):
                 print('CAD data deleted')
-            logging.info(self.fct_datetime_now() + ' CAD data deleted...')
+            #logging.info(self.fct_datetime_now() + ' CAD data deleted...')
+            ROX1_logging.fct_ROX1_log('info', sys.argv[0], ' CAD data deleted...')
 
     def fct_datetime_now(self):
         wrk_currentdt = datetime.now()
@@ -81,7 +84,8 @@ class cls_container:
                                 except Exception as e:
                                     if(self.verbose >= 1):
                                         print('********** ERROR: Get_payload failed on 2nd attempt using straight string', e)
-                                        logging.error(fct_datetime_now() + ' ********** ERROR: Get_payload failed on 2nd attempt using straight string' + e)
+                                        ROX1_logging.fct_ROX1_log('error', sys.argv[0], str('*** ERROR get_payload failed on 2nd attempt: ' + str(e)))
+                                        #logging.error(fct_datetime_now() + ' ********** ERROR: Get_payload failed on 2nd attempt using straight string' + e)
                                     break
                             self.fct_email_parse(body)
                             self.overall_emailcount3 += 1  # add to counter, even if parse encountered duplicate email
@@ -165,8 +169,6 @@ class cls_container:
             elif(tmp_flag_apparatus_header3):
                 #self.fct_apparatus_update(x, this_incident_nbr, 'section3')
                 pass  #for future
-
-
         ## Append the incident list, this will be used to update the Mongo database
         self.incident_list.append([this_incident_nbr, inc_date, inc_time, inc_description[:43].rstrip(), inc_location[:63].rstrip(), inc_fire, inc_ems])
 
@@ -184,7 +186,8 @@ class cls_container:
         else:
             if(self.verbose >= 1):
                 print('******* DUPLICATE INCIDENT: ', tmp_incident_nbr)
-            logging.info(self.fct_datetime_now() + ' ******* DUPLICATE INCIDENT: ' + tmp_incident_nbr)
+            #logging.info(self.fct_datetime_now() + ' ******* DUPLICATE INCIDENT: ' + tmp_incident_nbr)
+            ROX1_logging.fct_ROX1_log('info', sys.argv[0], str('DUPLICATE INCIDENT: ' +  tmp_incident_nbr))
             self.overall_duplicatecount += 1
         cursor = self.collection_counter.find({"incident_nbr":tmp_incident_nbr})
         try:
@@ -249,7 +252,8 @@ class cls_container:
                 pass
             #logging.info(self.fct_datetime_now() + ' info apparatus list in fct_apparatus_update: ' + str(self.apparatus_list))
         except Exception as E:
-            logging.info(self.fct_datetime_now() + ' info/warning during fct_apparatus_update: ' + E)
+            #logging.info(self.fct_datetime_now() + ' info/warning during fct_apparatus_update: ' + E)
+            ROX1_logging.fct_ROX1_log('info', sys.argv[0], str('warning encountered during apparatus update: ' +  str(E)))
 
     def fct_update_collection(self):
         ### update the incident details
@@ -265,7 +269,8 @@ class cls_container:
                 except Exception as E:
                     if(self.verbose >= 1):
                         print('Error during timezone conversion: ', E)
-                    logging.error(self.fct_datetime_now() + ' Error during timezone conversion: ' + E)
+                    #logging.error(self.fct_datetime_now() + ' Error during timezone conversion: ' + E)
+                    ROX1_logging.fct_ROX1_log('error', sys.argv[0], str('Errror during timezone conversion: ' + str(E)))
                 #print('***** just before insert', wrk_datetime, '  ', self.local_timezone.localize(wrk_datetime))
             self.collection_counter.insert_one({"incident_nbr": x[0], "incident_date":UTC_datetime, "incident_description":x[3], "incident_location":x[4], "fire_counter":x[5], "ems_counter":x[6]})
 
@@ -286,7 +291,8 @@ class cls_container:
                     "enroute_hospital":tmp_enroutehospital, "arrive_hospital":tmp_arrivehospital,
                     "enroute_station":tmp_enroutestation, "available":x[4], "clear":x[5]})
             except Exception as E:
-                logging.error(self.fct_datetime_now() + ' Error while assigning values to apparatus CADdata collection: ' + E + '\n' + x)
+                #logging.error(self.fct_datetime_now() + ' Error while assigning values to apparatus CADdata collection: ' + E + '\n' + x)
+                ROX1_logging.fct_ROX1_log('error', sys.argv[0], str('Error while assigning values to apparatus CADdata collection: ' + str(E) + '\n' + x))
 
 
     def fct_sortandprint(self):
@@ -295,7 +301,8 @@ class cls_container:
         print("Print incident list")
         for inc_data in tmp_incident_list:
             print(inc_data[0], ' ', inc_data[1], ' ', inc_data[2], ' ', inc_data[3], ' ', inc_data[4], ' ' )
-            logging.info(self.fct_datetime_now() + ' ADDED to CAD collection: ' + inc_data[0] + ' ' + inc_data[1] + ' ' + inc_data[2] + ' ' + inc_data[3] + ' ' + inc_data[4])
+            #logging.info(self.fct_datetime_now() + ' ADDED to CAD collection: ' + inc_data[0] + ' ' + inc_data[1] + ' ' + inc_data[2] + ' ' + inc_data[3] + ' ' + inc_data[4])
+            ROX1_logging.fct_ROX1_log('info', sys.argv[0], str(' ADDED to CAD collection: ' + inc_data[0] + ' ' + inc_data[1] + ' ' + inc_data[2] + ' ' + inc_data[3] + ' ' + inc_data[4]))
         print("End of Print incident list")
 
     def fct_finish(self, arg_mailbox_class):
@@ -304,7 +311,8 @@ class cls_container:
         except:
             if(self.verbose >= 1):
                 print('Issue logging out of mailbox')
-            logging.error(self.fct_datetime_now() + ' Issue logging out of mailbox' )
+            #logging.error(self.fct_datetime_now() + ' Issue logging out of mailbox' )
+            ROX1_logging.fct_ROX1_log('error', sys.argv[0], str('Issue logging out of mailbox'))
         if(self.verbose >= 2):
             print('Overall  (F) fire counter:', self.overall_firecount)
             print('Overall   (E) ems counter:', self.overall_emscount)
@@ -315,7 +323,8 @@ class cls_container:
             print('Overall    email3 counter:', self.overall_emailcount3)
         if(self.verbose >= 1):
             print('  Incidents added counter:', len(self.incident_list))
-        logging.info(self.fct_datetime_now() + ' Incidents added counter: ' + str(len(self.incident_list)))
+        #logging.info(self.fct_datetime_now() + ' Incidents added counter: ' + str(len(self.incident_list)))
+        ROX1_logging.fct_ROX1_log('info', sys.argv[0], str('Incidents added counter: ' + str(len(self.incident_list))))
 
 #############################################################
 ### Begin mainline

@@ -2,14 +2,14 @@
 ## open the "dispatches" mailbox,
 ##
 
-import sys, logging
+import sys, logging, ROX1_logging
 import imaplib, ssl, hashlib, json
 from cryptography.fernet import Fernet
 from datetime import datetime, date
 
 class cls_CAD_emails():
     def __init__(self):
-        logging.basicConfig(filename='logging/ROX1_CAD.log',level=logging.DEBUG)
+        #logging.basicConfig(filename='logging/ROX1_CAD.log',level=logging.DEBUG)
         try:
             ### open file and retrieve email info
             self.wrk_login, self.wrk_hash, self.wrk_pwd, self.wrk_salt = '', '', '', ''
@@ -27,7 +27,8 @@ class cls_CAD_emails():
             self.incident_list = []
             # create empty passlib object
         except Exception as e:
-            logging.error(fct_datetime_now() + ' ********** ERROR: cls_CAD_emails in ' + ' failed as follows: ' + e)
+            ROX1_logging.fct_ROX1_log('error', sys.argv[0], str(e))
+            #logging.error(fct_datetime_now() + ' ********** ERROR: cls_CAD_emails in ' + ' failed as follows: ' + e)
 
     def fct_read_json(self):
         try:
@@ -52,7 +53,8 @@ class cls_CAD_emails():
             self.wrk_pwd = tmp_decrypted_password.decode()
             #print("pwd:", (self.wrk_pwd))
         except Exception as e:
-            logging.error(fct_datetime_now() + ' ********** ERROR: fct_read_json in ' + ' failed as follows: ' + e)
+            ROX1_logging.fct_ROX1_log('error', sys.argv[0], str(e))
+            #logging.error(fct_datetime_now() + ' ********** ERROR: fct_read_json in ' + ' failed as follows: ' + e)
 
     def fct_datetime_now(self):
         wrk_currentdt = datetime.now()
@@ -64,7 +66,8 @@ class cls_CAD_emails():
             self.CADEmails.close()
             self.CADEmails.logout()
         except Exception as e:
-            logging.error(fct_datetime_now() + ' ********** ERROR: fct_cleanup ' + ' failed as follows: ' + e)
+            ROX1_logging.fct_ROX1_log('error', sys.argv[0], str(e))
+            #logging.error(fct_datetime_now() + ' ********** ERROR: fct_cleanup ' + ' failed as follows: ' + e)
 
 #############################################################
 ### Begin mainline
