@@ -20,7 +20,9 @@ class cls_container:
         self.rebuild = arg_rebuild
         self.verbose = arg_verbose
         self.overall_firecount = 0
+        self.overall_firecount_co1 = 0
         self.overall_emscount = 0
+        self.overall_emscount_co1 = 0
         self.overall_duplicatecount = 0
         self.overall_emailcount = 0
         self.overall_emailcount2 = 0
@@ -113,7 +115,9 @@ class cls_container:
         inc_description = ''
         inc_location = ''
         inc_fire = False
+        inc_fire_co1 = False
         inc_ems = False
+        inc_ems_co1 = False
         inc_apparatus = ''
 
         for x in split_bodytext:
@@ -145,7 +149,8 @@ class cls_container:
                 #inc_description = x.split[2]
             if("Location                                                        C/A  USE   OPER" in x and tmp_flag_location1 in(0,1)):
                 tmp_flag_location1 += 1
-            elif("Location                                                        C/A  USE   OPER" not in x and tmp_flag_location1 >= 1 and inc_location == ''):
+            elif("Location                                                        C/A  USE   OPER" not in x and
+                tmp_flag_location1 >= 1 and inc_location == ''):
                 inc_location = x
 
             ## Check next section of email for apparatus details
@@ -154,15 +159,31 @@ class cls_container:
             elif((x[:6] in('E36109', 'E36110')) and x[20:22].isnumeric() and tmp_flag_apparatus_header):  # x[20:22] is "enroute" time
                 if(inc_ems == False):
                     inc_ems = True
+                if(inc_ems_co1 == False):
+                    inc_ems_co1 = True
                 self.fct_apparatus_update(x, this_incident_nbr, 'section1')
+            elif((x[:6] in('E36209', 'E36210', 'E36310')) and x[20:22].isnumeric() and tmp_flag_apparatus_header):  # x[20:22] is "enroute" time
+                if(inc_ems == False):
+                    inc_ems = True
+                self.fct_apparatus_update(x, this_incident_nbr, 'section1')
+
             elif((x[:4] == '3691' and '                        ' not in x[20:56]
                 or x[:6] in ("F36BC1","F36Q11","F36E12","F36E13","F36T14","F36R16")) and tmp_flag_apparatus_header):
                 if(inc_fire == False):
                     inc_fire = True
+                if(inc_fire_co1 == False):
+                    inc_fire_co1 = True
                 self.fct_apparatus_update(x, this_incident_nbr, 'section1')
+            elif((x[:4] == '3691' and '                        ' not in x[20:56]
+                or x[:6] in ("F36FOFF", "F36CH1", "F36BC2", "F36BC3", "F36E21","F36E22","F36E23","F36E31","F36R24", "F36R34", "F36T32")) and tmp_flag_apparatus_header):
+                if(inc_fire == False):
+                    inc_fire = True
+                self.fct_apparatus_update(x, this_incident_nbr, 'section1')
+
             if("Unit        EnSta    ArSta    EnHosp   ArHosp  Hospital  EnJail   ArJail" in x and tmp_flag_apparatus_header2 == False):
                 tmp_flag_apparatus_header, tmp_flag_apparatus_header2 = False, True
-            elif((( x[:6] in('E36109', 'E36110') and x[11:13].isnumeric()) or x[:6] in ("F36BC1","F36Q11","F36E12","F36E13","F36T14","F36R16")) and tmp_flag_apparatus_header2 == True):  # x[11:13] is EnSta time
+            elif((( x[:6] in('E36109', 'E36110') and x[11:13].isnumeric()) or
+                x[:6] in ("F36BC1","F36Q11","F36E12","F36E13","F36T14","F36R16")) and tmp_flag_apparatus_header2 == True):  # x[11:13] is EnSta time
                 self.fct_apparatus_update(x, this_incident_nbr, 'section2')
             if("Unit       Reduce Speed Reason         Recalled Reason          Staged" in x and tmp_flag_apparatus_header3 == False):
                 tmp_flag_apparatus_header2, tmp_flag_apparatus_header3 = False, True
@@ -170,7 +191,8 @@ class cls_container:
                 #self.fct_apparatus_update(x, this_incident_nbr, 'section3')
                 pass  #for future
         ## Append the incident list, this will be used to update the Mongo database
-        self.incident_list.append([this_incident_nbr, inc_date, inc_time, inc_description[:43].rstrip(), inc_location[:63].rstrip(), inc_fire, inc_ems])
+        self.incident_list.append([this_incident_nbr, inc_date, inc_time,
+            inc_description[:43].rstrip(), inc_location[:63].rstrip(), inc_fire, inc_fire_co1, inc_ems, inc_ems_co1])
 
     def fct_event_number(self, arg_incident_nbr):
         tmp_incident_nbr = arg_incident_nbr
@@ -226,7 +248,8 @@ class cls_container:
                     wrk_cleared = wrk_x[65:73]
                 else:
                     wrk_cleared = ''
-                self.apparatus_list.append([wrk_incident_number + '_' + wrk_x_split[0], wrk_dispatch, wrk_enroute, wrk_arrive, wrk_available, wrk_cleared])
+                self.apparatus_list.append([wrk_incident_number + '_' + wrk_x_split[0],
+                    wrk_dispatch, wrk_enroute, wrk_arrive, wrk_available, wrk_cleared])
                 #pass
             elif(arg_section == 'section2'):
                 if(wrk_x[11:13] != '  '):
@@ -272,7 +295,8 @@ class cls_container:
                     #logging.error(self.fct_datetime_now() + ' Error during timezone conversion: ' + E)
                     ROX1_logging.fct_ROX1_log('error', sys.argv[0], str('Errror during timezone conversion: ' + str(E)))
                 #print('***** just before insert', wrk_datetime, '  ', self.local_timezone.localize(wrk_datetime))
-            self.collection_counter.insert_one({"incident_nbr": x[0], "incident_date":UTC_datetime, "incident_description":x[3], "incident_location":x[4], "fire_counter":x[5], "ems_counter":x[6]})
+            self.collection_counter.insert_one({"incident_nbr": x[0], "incident_date":UTC_datetime,
+                "incident_description":x[3], "incident_location":x[4], "fire_counter":x[5], "fire_counter_co1":x[6], "ems_counter":x[7] , "ems_counter_co1":x[8]})
 
         ### Now update the CAD apparatus details
         for x in self.apparatus_list:
@@ -301,8 +325,8 @@ class cls_container:
         print("Print incident list")
         for inc_data in tmp_incident_list:
             print(inc_data[0], ' ', inc_data[1], ' ', inc_data[2], ' ', inc_data[3], ' ', inc_data[4], ' ' )
-            #logging.info(self.fct_datetime_now() + ' ADDED to CAD collection: ' + inc_data[0] + ' ' + inc_data[1] + ' ' + inc_data[2] + ' ' + inc_data[3] + ' ' + inc_data[4])
-            ROX1_logging.fct_ROX1_log('info', sys.argv[0], str(' ADDED to CAD collection: ' + inc_data[0] + ' ' + inc_data[1] + ' ' + inc_data[2] + ' ' + inc_data[3] + ' ' + inc_data[4]))
+            ROX1_logging.fct_ROX1_log('info', sys.argv[0], str(' ADDED to CAD collection: ' + inc_data[0] +
+                ' ' + inc_data[1] + ' ' + inc_data[2] + ' ' + inc_data[3] + ' ' + inc_data[4]))
         print("End of Print incident list")
 
     def fct_finish(self, arg_mailbox_class):
