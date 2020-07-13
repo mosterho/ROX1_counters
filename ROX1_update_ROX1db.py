@@ -41,13 +41,14 @@ class cls_container:
         ## connect to Mongo collection
         client = MongoClient('mongodb')
         db = client.ROX1db
-        self.collection_counter = db.CADdata
-        self.collection_apparatus = db.CADapparatus
+        self.collection_CADdata = db.CADdata
+        self.collection_CADapparatus = db.CADapparatus
+        self.collection_apparatus = db.apparatus
 
         ## check argument to clear data from CAD collection
         if(self.rebuild == 'Y'):
-            self.collection_counter.delete_many({})
-            self.collection_apparatus.delete_many({})
+            self.collection_CADdata.delete_many({})
+            self.collection_CADapparatus.delete_many({})
             if(self.verbose >= 1):
                 print('CAD data deleted')
             #logging.info(self.fct_datetime_now() + ' CAD data deleted...')
@@ -86,7 +87,7 @@ class cls_container:
                                 except Exception as e:
                                     if(self.verbose >= 1):
                                         print('********** ERROR: Get_payload failed on 2nd attempt using straight string', e)
-                                        ROX1_logging.fct_ROX1_log('error', sys.argv[0], str('*** ERROR get_payload failed on 2nd attempt: ' + str(e)))
+                                    ROX1_logging.fct_ROX1_log('error', sys.argv[0], str('*** ERROR get_payload failed on 2nd attempt: ' + str(e)))
                                         #logging.error(fct_datetime_now() + ' ********** ERROR: Get_payload failed on 2nd attempt using straight string' + e)
                                     break
                             self.fct_email_parse(body)
@@ -175,7 +176,7 @@ class cls_container:
                     inc_fire_co1 = True
                 self.fct_apparatus_update(x, this_incident_nbr, 'section1')
             elif((x[:4] == '3691' and '                        ' not in x[20:56]
-                or x[:6] in ("F36FOFF", "F36CH1", "F36BC2", "F36BC3", "F36E21","F36E22","F36E23","F36E31","F36R24", "F36R34", "F36T32")) and tmp_flag_apparatus_header):
+                or x[:6] in ("F36FOF", "F36INS", "F36CH1", "F36BC2", "F36BC3", "F36E21","F36E22","F36E23","F36E31","F36R24", "F36R34", "F36T32")) and tmp_flag_apparatus_header):
                 if(inc_fire == False):
                     inc_fire = True
                 self.fct_apparatus_update(x, this_incident_nbr, 'section1')
@@ -211,7 +212,7 @@ class cls_container:
             #logging.info(self.fct_datetime_now() + ' ******* DUPLICATE INCIDENT: ' + tmp_incident_nbr)
             ROX1_logging.fct_ROX1_log('info', sys.argv[0], str('DUPLICATE INCIDENT: ' +  tmp_incident_nbr))
             self.overall_duplicatecount += 1
-        cursor = self.collection_counter.find({"incident_nbr":tmp_incident_nbr})
+        cursor = self.collection_CADdata.find({"incident_nbr":tmp_incident_nbr})
         try:
             for readit in cursor:
                 rtn_flag = ''
@@ -295,7 +296,7 @@ class cls_container:
                     #logging.error(self.fct_datetime_now() + ' Error during timezone conversion: ' + E)
                     ROX1_logging.fct_ROX1_log('error', sys.argv[0], str('Errror during timezone conversion: ' + str(E)))
                 #print('***** just before insert', wrk_datetime, '  ', self.local_timezone.localize(wrk_datetime))
-            self.collection_counter.insert_one({"incident_nbr": x[0], "incident_date":UTC_datetime,
+            self.collection_CADdata.insert_one({"incident_nbr": x[0], "incident_date":UTC_datetime,
                 "incident_description":x[3], "incident_location":x[4], "fire_counter":x[5], "fire_counter_co1":x[6], "ems_counter":x[7] , "ems_counter_co1":x[8]})
 
         ### Now update the CAD apparatus details
@@ -310,13 +311,13 @@ class cls_container:
                     tmp_enroutestation = ''
                     tmp_enroutehospital = ''
                     tmp_arrivehospital = ''
-                self.collection_apparatus.insert_one({"incident_nbr": x[0][0:10], "apparatus":x[0][11:17], "dispatch":x[1],
+                self.collection_CADapparatus.insert_one({"incident_nbr": x[0][0:10], "apparatus":x[0][11:17], "dispatch":x[1],
                     "enroute":x[2], "arrive_scene":x[3],
                     "enroute_hospital":tmp_enroutehospital, "arrive_hospital":tmp_arrivehospital,
                     "enroute_station":tmp_enroutestation, "available":x[4], "clear":x[5]})
             except Exception as E:
                 #logging.error(self.fct_datetime_now() + ' Error while assigning values to apparatus CADdata collection: ' + E + '\n' + x)
-                ROX1_logging.fct_ROX1_log('error', sys.argv[0], str('Error while assigning values to apparatus CADdata collection: ' + str(E) + '\n' + x))
+                ROX1_logging.fct_ROX1_log('error', sys.argv[0], str('Error while assigning values to apparatus CADapparatus collection: ' + str(E) + '\n' + x))
 
 
     def fct_sortandprint(self):

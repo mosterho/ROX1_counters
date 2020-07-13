@@ -2,10 +2,19 @@
 __3tsoftwarelabs_disabled_aggregation_stages = [
 
 	{
+		// Stage 3 - excluded
+		stage: 3,  source: {
+			$match: {
+			    "yearofcall":2020
+			}
+		}
+	},
+
+	{
 		// Stage 4 - excluded
 		stage: 4,  source: {
 			$match: {
-			    "monthofcall":05
+			    "incident_nbr": /^E.*/i
 			}
 		}
 	},
@@ -13,17 +22,11 @@ __3tsoftwarelabs_disabled_aggregation_stages = [
 	{
 		// Stage 6 - excluded
 		stage: 6,  source: {
-			$match: {
-			    "dayofweek":{$in: [1,7]}
-			}
-		}
-	},
-
-	{
-		// Stage 7 - excluded
-		stage: 7,  source: {
-			$match: {
-			    "hourofcall":{$in:[9,10,11,12,13,14,15,16,17,18,19,20,21,22]}
+			$bucket: {
+			    groupBy: "$ems_counter", // usually "$path.to.field"
+			    boundaries: [ false, true ],
+			    default: "true", // optional
+			    output: { count: { $sum: 1 } } // optional
 			}
 		}
 	},
@@ -63,34 +66,10 @@ db.getCollection("CADdata").aggregate(
 			// }
 		},
 
-		// Stage 3
-		{
-			$match: {
-			    "yearofcall":2020
-			}
-		},
-
 		// Stage 5
-		{
-			$match: {
-			    "incident_nbr": /^E.*/i
-			}
-		},
-
-		// Stage 8
 		{
 			$sort: {
 			    "incident_date" : 1
-			}
-		},
-
-		// Stage 9
-		{
-			$bucket: {
-			    groupBy: "$ems_counter", // usually "$path.to.field"
-			    boundaries: [ false, true ],
-			    default: "true", // optional
-			    output: { count: { $sum: 1 } } // optional
 			}
 		},
 	],
