@@ -4,14 +4,18 @@
 ## It's probably better to use something like systemctl,
 ## but just trying this
 
-import sys, subprocess, time, ROX1_logging
+import sys, subprocess, time, ROX1_logging, argparse
 
-wrk_time = int(sys.argv[1])  # time to sleep in seconds
+wrk_parser = argparse.ArgumentParser(usage="The ROX1 Scheduler program will call the ROX1 Update program via continuous loop with a sleep time of ### seconds based on the argument. Arguments include 1. time (in seconds) to sleep and then rerun the Update (integer)")
+wrk_parser.add_argument("time", help="Run the Update program every ### seconds.", type=int, default=600)
+rslt_parser = wrk_parser.parse_args()
+
+wrk_time = rslt_parser.time  # time to sleep in seconds
 
 try:
     while 1==1:
         print("\r{:60s}\r".format('Update running...'), end='', flush=True)
-        subprocess.run(['python3', 'ROX1_update_ROX1db.py'])
+        subprocess.run(['python3', 'ROX1_update_ROX1db_V2.py'])
         for i in range(wrk_time, 0, -60):
             print("\r{:60s}\r".format('Job sleeping... job restart in ' + "{:2d}".format(int(i/60)) + " minutes"), end='', flush=True)
             time.sleep(60)
