@@ -172,7 +172,7 @@ class cls_container:
 
             if("Unit        EnSta    ArSta    EnHosp   ArHosp  Hospital" in x and tmp_flag_apparatus_header2 == False):
                 tmp_flag_apparatus_header, tmp_flag_apparatus_header2 = False, True
-            elif(x[11:13].isnumeric() and tmp_flag_apparatus_header2 == True):  # x[11:13] is EnSta time
+            elif((x[11:13].isnumeric() or x[29:31].isnumeric()) and tmp_flag_apparatus_header2 == True):  # x[11:13] is EnSta time
                 self.fct_apparatus_update(x, this_incident_nbr, 'section2')
             if("Unit       Reduce Speed Reason         Recalled Reason" in x and tmp_flag_apparatus_header3 == False):
                 tmp_flag_apparatus_header2, tmp_flag_apparatus_header3 = False, True
