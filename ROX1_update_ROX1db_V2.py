@@ -170,11 +170,11 @@ class cls_container:
                 if(rtn_fireems != ''):
                     self.fct_apparatus_update(x, this_incident_nbr, 'section1')
 
-            if("Unit        EnSta    ArSta    EnHosp   ArHosp  Hospital  EnJail   ArJail" in x and tmp_flag_apparatus_header2 == False):
+            if("Unit        EnSta    ArSta    EnHosp   ArHosp  Hospital" in x and tmp_flag_apparatus_header2 == False):
                 tmp_flag_apparatus_header, tmp_flag_apparatus_header2 = False, True
             elif(x[11:13].isnumeric() and tmp_flag_apparatus_header2 == True):  # x[11:13] is EnSta time
                 self.fct_apparatus_update(x, this_incident_nbr, 'section2')
-            if("Unit       Reduce Speed Reason         Recalled Reason          Staged" in x and tmp_flag_apparatus_header3 == False):
+            if("Unit       Reduce Speed Reason         Recalled Reason" in x and tmp_flag_apparatus_header3 == False):
                 tmp_flag_apparatus_header2, tmp_flag_apparatus_header3 = False, True
             elif(tmp_flag_apparatus_header3):
                 #self.fct_apparatus_update(x, this_incident_nbr, 'section3')
@@ -323,7 +323,7 @@ class cls_container:
                 elif(arg_apparatus[:1]) == 'F':
                     wrk_fireems = 'fire'
         except Exception as e:
-            ROX1_logging.fct_ROX1_log('error', sys.argv[0], str('Error while validating apparatus: ' + str(e) + ' ' + str(x)))
+            ROX1_logging.fct_ROX1_log('error', sys.argv[0], str('Error while validating apparatus: ' + str(e) ))
         return wrk_co1, wrk_companynbr, wrk_fireems
 
     def fct_sortandprint(self):

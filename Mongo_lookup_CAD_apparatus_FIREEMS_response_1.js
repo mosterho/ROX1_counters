@@ -11,6 +11,15 @@ __3tsoftwarelabs_disabled_aggregation_stages = [
 	},
 
 	{
+		// Stage 6 - excluded
+		stage: 6,  source: {
+			$match: {
+			    "incident_nbr": /^E.*/i
+			}
+		}
+	},
+
+	{
 		// Stage 8 - excluded
 		stage: 8,  source: {
 			$bucket: {
@@ -18,6 +27,18 @@ __3tsoftwarelabs_disabled_aggregation_stages = [
 			    boundaries: [ "b", "z" ],
 			    default: "", // optional
 			    output: { count: { $sum: 1 } } // optional
+			}
+		}
+	},
+
+	{
+		// Stage 9 - excluded
+		stage: 9,  source: {
+			$bucketAuto: {
+			    groupBy:"$concat_ems", // usually "$path.to.field"
+			    buckets: 15, // number of buckets
+			    output: { count: { $sum: 1 } }, // optional
+			    //granularity: "" // optional, supported: "R5", "R10", "R20", "R40", "R80", "1-2-5", "E6", "E12", "E24", "E48", "E96", "E192", "POWERSOF2" 
 			}
 		}
 	},
@@ -78,27 +99,10 @@ db.getCollection("CADdata").aggregate(
 			// }
 		},
 
-		// Stage 6
-		{
-			$match: {
-			    "incident_nbr": /^E.*/i
-			}
-		},
-
 		// Stage 7
 		{
 			$sort: {
-			    "incident_date" : 1
-			}
-		},
-
-		// Stage 9
-		{
-			$bucketAuto: {
-			    groupBy:"$concat_ems", // usually "$path.to.field"
-			    buckets: 15, // number of buckets
-			    output: { count: { $sum: 1 } }, // optional
-			    //granularity: "" // optional, supported: "R5", "R10", "R20", "R40", "R80", "1-2-5", "E6", "E12", "E24", "E48", "E96", "E192", "POWERSOF2" 
+			    "incident_date" : -1
 			}
 		},
 	],
