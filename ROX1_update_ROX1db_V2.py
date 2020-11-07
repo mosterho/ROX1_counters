@@ -67,7 +67,13 @@ class cls_container:
         typ, data = arg_mailbox_class.CADEmails.search(None, wrk_search_string)
         #### num contains the email ID to retrieve
         for num in data[0].split():
-            typ2, data2 = arg_mailbox_class.CADEmails.fetch(num, "RFC822")  # retrieve list of email numbers
+            try:
+                typ2, data2 = arg_mailbox_class.CADEmails.fetch(num, "RFC822")  # retrieve list of email numbers
+            except Exception as e:
+                if(self.verbose >= 1):
+                    print('********** ERROR: error with retrieving emails routine, probably a connectivity issue: ', e)
+                ROX1_logging.fct_ROX1_log('error', sys.argv[0], str('*** ERROR: error with retrieving emails routine, probably a connectivity issue: ' + str(e)))
+                break
             self.overall_emailcount += 1
             for data2_i in data2:
                 ## Checking for tuple will skip the b')' entry at the end of each email
